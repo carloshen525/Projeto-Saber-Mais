@@ -183,7 +183,11 @@ export const broadcastService = {
     let url = (rawUrl || '').trim();
     if (!url) return '';
     if (!/^https?:\/\//i.test(url)) {
-      url = `https://${url}`;
+      if (url.startsWith('localhost') || url.startsWith('127.0.0.1')) {
+        url = `http://${url}`;
+      } else {
+        url = `https://${url}`;
+      }
     }
     url = url.replace(/\/+$/, '');
     // Remove sufixos comuns que o usuário possa ter colado por engano
@@ -191,6 +195,14 @@ export const broadcastService = {
     url = url.replace(/\/group(\/fetchallgroups)?\/?$/i, '');
     url = url.replace(/\/message(\/sendmedia)?\/?$/i, '');
     return url;
+  },
+
+  validateMixedContent(base: string): void {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && base.startsWith('http://')) {
+      throw new Error(
+        'Bloqueio de Segurança (Mixed Content): Seu site está rodando em HTTPS (Vercel) e os navegadores proíbem requisições para URLs HTTP locais (ex: http://localhost). Para conectar uma Evolution API local à Vercel, utilize um túnel HTTPS gratuito (como Ngrok ou Cloudflare Tunnel) ou acesse o painel pelo seu ambiente local (http://localhost:5173/admin).'
+      );
+    }
   },
 
   getHeaders(apiKey: string) {
@@ -207,6 +219,8 @@ export const broadcastService = {
     const base = this.cleanBaseUrl(apiUrl);
     if (!base) throw new Error('Informe a URL da Evolution API.');
     if (!apiKey?.trim()) throw new Error('Informe a API Key da Evolution API.');
+
+    this.validateMixedContent(base);
 
     try {
       const res = await fetch(`${base}/instance/fetchInstances`, {
@@ -278,6 +292,8 @@ export const broadcastService = {
     if (!base) throw new Error('Informe a URL da Evolution API.');
     if (!apiKey?.trim()) throw new Error('Informe a API Key.');
     if (!instanceName?.trim()) throw new Error('Informe o nome da instância.');
+
+    this.validateMixedContent(base);
 
     try {
       const res = await fetch(
@@ -358,6 +374,8 @@ export const broadcastService = {
   ): Promise<EvolutionGroup[]> {
     const base = this.cleanBaseUrl(apiUrl);
     if (!base || !apiKey || !instanceName) return [];
+
+    this.validateMixedContent(base);
 
     try {
       const res = await fetch(
@@ -450,6 +468,8 @@ export const broadcastService = {
     caption: string
   ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
     const base = this.cleanBaseUrl(apiUrl);
+
+    this.validateMixedContent(base);
 
     try {
       const endpoint = `${base}/message/sendMedia/${encodeURIComponent(instanceName)}`;

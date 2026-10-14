@@ -48,9 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
           className="group flex items-center gap-3.5 focus:outline-none"
           aria-label={settings.store_name}
         >
-          {settings.logo_url ? (
+          {settings.logo_url || '/logo.png' ? (
             <img
-              src={settings.logo_url}
+              src={settings.logo_url || '/logo.png'}
               alt={settings.store_name}
               className="h-12 w-12 rounded-2xl object-cover shadow-xs transition-transform group-hover:scale-105"
             />

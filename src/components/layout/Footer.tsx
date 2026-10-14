@@ -15,18 +15,26 @@ export const Footer: React.FC = () => {
           {/* Brand Column */}
           <div>
             <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-extrabold"
-                style={{ backgroundColor: settings.primary_color || '#207182' }}
-              >
-                S+
-              </div>
+              {settings.logo_url || '/logo.png' ? (
+                <img
+                  src={settings.logo_url || '/logo.png'}
+                  alt={settings.store_name}
+                  className="h-10 w-10 rounded-xl object-cover shadow-xs"
+                />
+              ) : (
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-extrabold"
+                  style={{ backgroundColor: settings.primary_color || '#207182' }}
+                >
+                  S+
+                </div>
+              )}
               <div>
                 <p className="font-extrabold text-slate-900 dark:text-white">
                   {settings.store_name}
                 </p>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                  {settings.store_subtitle || 'MATERIAIS PEDAGÓGICOS'}
+                  {settings.store_subtitle || 'EDUCAÇÃO INFANTIL'}
                 </p>
               </div>
             </div>
@@ -52,43 +60,22 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Contact & Social */}
+          {/* Contact */}
           <div className="space-y-2.5 text-sm">
-            <h4 className="font-bold text-slate-900 dark:text-white">Atendimento & Redes</h4>
-            {settings.whatsapp && (
-              <p>
-                WhatsApp:{' '}
-                <a
-                  href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-[#207182] hover:underline dark:text-cyan-400"
-                >
-                  +{settings.whatsapp}
-                </a>
-              </p>
-            )}
-            <div className="flex flex-wrap gap-3 pt-1">
-              {settings.instagram && (
-                <a
-                  href={settings.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Instagram
-                </a>
-              )}
-              {settings.facebook && (
-                <a
-                  href={settings.facebook}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  Facebook
-                </a>
-              )}
+            <h4 className="font-bold text-slate-900 dark:text-white">Atendimento WhatsApp</h4>
+            <p className="text-slate-500 dark:text-slate-400 text-xs">
+              Dúvidas ou pedidos de materiais personalizados? Fale conosco diretamente pelo WhatsApp:
+            </p>
+            <div className="pt-1">
+              <a
+                href={`https://wa.me/5535998754516`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                (35) 99875-4516
+              </a>
             </div>
           </div>
         </div>

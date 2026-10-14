@@ -1296,7 +1296,7 @@ export const AdminPage: React.FC = () => {
                       onChange={(e) =>
                         setConfigForm((s) => ({ ...s, whatsapp: e.target.value }))
                       }
-                      placeholder="5511999999999"
+                      placeholder="5535998754516"
                     />
                   </div>
                   <div>

@@ -137,33 +137,30 @@ export const AdminLoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {!isSupabaseConfigured && (
-            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                <div className="text-xs text-amber-900 dark:text-amber-200">
-                  <p className="font-bold">Modo Local / Demonstração Ativo</p>
-                  <p className="mt-0.5 opacity-90">
-                    Para conectar ao seu banco Supabase em produção, adicione{' '}
-                    <code className="font-mono font-bold">VITE_SUPABASE_URL</code> e{' '}
-                    <code className="font-mono font-bold">VITE_SUPABASE_ANON_KEY</code> no arquivo{' '}
-                    <code className="font-mono font-bold">.env</code>.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      signInDemoAdmin();
-                      toast.success('Sessão de Administrador iniciada!');
-                      navigate('/admin');
-                    }}
-                    className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 cursor-pointer"
-                  >
-                    Acesso Rápido Admin (1-Clique)
-                  </button>
-                </div>
+          <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#207182]" />
+              <div className="text-xs text-slate-700 dark:text-slate-300">
+                <p className="font-bold text-slate-900 dark:text-white">Acesso Rápido de Teste</p>
+                <p className="mt-0.5 opacity-90">
+                  Você pode usar o botão abaixo para entrar diretamente como Administrador sem precisar digitar senha:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    signInDemoAdmin();
+                    toast.success('Sessão de Administrador iniciada!');
+                    navigate('/admin');
+                  }}
+                  style={{ backgroundColor: settings.primary_color || '#207182' }}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition-all cursor-pointer shadow-xs"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Entrar com 1-Clique (Admin)
+                </button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

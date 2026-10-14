@@ -91,7 +91,7 @@ export const CartDrawer: React.FC = () => {
         customerEmail,
         appliedCoupon?.code
       );
-      const whatsappUrl = buildWhatsAppUrl(settings.whatsapp || '5511999999999', message);
+      const whatsappUrl = buildWhatsAppUrl(settings.whatsapp || '5535998754516', message);
 
       toast.success('Pedido preparado! Redirecionando para o WhatsApp...');
       window.open(whatsappUrl, '_blank', 'noopener,noreferrer');

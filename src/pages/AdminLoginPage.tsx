@@ -31,8 +31,8 @@ export const AdminLoginPage: React.FC = () => {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'admin@projetosabermais.com.br',
-      password: 'admin123',
+      email: '',
+      password: '',
     },
   });
 
@@ -68,18 +68,17 @@ export const AdminLoginPage: React.FC = () => {
 
         <div className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center gap-3.5">
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-2xl text-white font-extrabold text-xl shadow-xs"
-              style={{ backgroundColor: settings.primary_color || '#207182' }}
-            >
-              S+
-            </div>
+            <img
+              src={settings.logo_url || '/logo.png'}
+              alt={settings.store_name}
+              className="h-12 w-12 rounded-2xl object-cover shadow-xs"
+            />
             <div>
               <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
                 Área Administrativa
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {settings.store_name} • Supabase Auth
+                {settings.store_name} • Painel de Gestão
               </p>
             </div>
           </div>
@@ -87,13 +86,13 @@ export const AdminLoginPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                E-mail do Administrador
+                E-mail
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <Input
-                  type="email"
-                  placeholder="admin@projetosabermais.com.br"
+                  type="text"
+                  placeholder="seu-email@gmail.com"
                   className="pl-10"
                   {...register('email')}
                 />
@@ -130,37 +129,12 @@ export const AdminLoginPage: React.FC = () => {
               size="lg"
               disabled={submitting}
               style={{ backgroundColor: settings.primary_color || '#207182' }}
-              className="w-full"
+              className="w-full cursor-pointer font-bold"
             >
               <KeyRound className="h-4 w-4" />
               {submitting ? 'Autenticando...' : 'Entrar no Painel'}
             </Button>
           </form>
-
-          <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <div className="flex items-start gap-2.5">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#207182]" />
-              <div className="text-xs text-slate-700 dark:text-slate-300">
-                <p className="font-bold text-slate-900 dark:text-white">Acesso Rápido de Teste</p>
-                <p className="mt-0.5 opacity-90">
-                  Você pode usar o botão abaixo para entrar diretamente como Administrador sem precisar digitar senha:
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    signInDemoAdmin();
-                    toast.success('Sessão de Administrador iniciada!');
-                    navigate('/admin');
-                  }}
-                  style={{ backgroundColor: settings.primary_color || '#207182' }}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition-all cursor-pointer shadow-xs"
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Entrar com 1-Clique (Admin)
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -88,10 +88,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // Credencial Mestra do Administrador
+    const isMasterAdmin =
+      (cleanEmail === 'carloshenrq1245@gmail.com' || cleanEmail === 'carloshenrq1245@gmail') &&
+      cleanPassword === '12277891';
+
+    if (isMasterAdmin) {
+      const masterUser: AdminSessionUser = {
+        id: 'master-admin-carlos',
+        email: 'carloshenrq1245@gmail.com',
+        role: 'super_admin',
+      };
+      setAdmin(masterUser);
+      localStorage.setItem(DEMO_ADMIN_KEY, JSON.stringify(masterUser));
+      return {};
+    }
+
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       if (!error && data.user) {
@@ -110,19 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Local / Demo credentials check when Supabase is not configured yet
-    if (email.trim().length >= 3 && password.trim().length >= 4) {
-      const demoUser: AdminSessionUser = {
-        id: 'admin-local-1',
-        email: email.trim(),
-        role: 'super_admin',
-      };
-      setAdmin(demoUser);
-      localStorage.setItem(DEMO_ADMIN_KEY, JSON.stringify(demoUser));
-      return {};
-    }
-
-    return { error: 'Credenciais inválidas. Verifique seu e-mail e senha.' };
+    return { error: 'E-mail ou senha incorretos. Verifique suas credenciais.' };
   };
 
   const signInDemoAdmin = () => {

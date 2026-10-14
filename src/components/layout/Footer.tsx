@@ -80,17 +80,10 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-6 text-xs text-slate-400 sm:flex-row dark:border-slate-800/80">
+        <div className="mt-10 flex flex-col items-center justify-center border-t border-slate-100 pt-6 text-xs text-slate-400 sm:flex-row dark:border-slate-800/80">
           <p>
             © {new Date().getFullYear()} {settings.store_name}. Todos os direitos reservados.
           </p>
-          <Link
-            to={isAuthenticated ? '/admin' : '/admin/login'}
-            className="inline-flex items-center gap-1.5 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
-          >
-            <Lock className="h-3.5 w-3.5" />
-            <span>{isAuthenticated ? 'Painel do Administrador' : 'Acesso Administrativo'}</span>
-          </Link>
         </div>
       </div>
     </footer>

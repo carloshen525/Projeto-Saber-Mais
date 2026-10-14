@@ -106,17 +106,6 @@ export const Header: React.FC<HeaderProps> = ({
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
 
-          {/* Botão do administrador (visível apenas quando autenticado, exatamente como solicitado) */}
-          {isAuthenticated && (
-            <Link
-              to="/admin"
-              title="Painel Administrativo"
-              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <Settings className="h-5 w-5" />
-            </Link>
-          )}
-
           {/* Botão do Carrinho */}
           <button
             type="button"

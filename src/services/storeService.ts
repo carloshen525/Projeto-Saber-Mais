@@ -110,7 +110,7 @@ export const storeService = {
         .from('categories')
         .select('*')
         .order('order_index', { ascending: true });
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         writeLocal(STORAGE_KEYS.CATEGORIES, data);
         return data as Category[];
       }
@@ -188,7 +188,7 @@ export const storeService = {
         .select('*, product_images(*), product_files(*)')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mapped: Product[] = data.map((row: Record<string, unknown>) => {
           const rawObjectives = row.pedagogical_objectives;
           const objectives = Array.isArray(rawObjectives)

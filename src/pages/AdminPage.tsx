@@ -1697,7 +1697,7 @@ export const AdminPage: React.FC = () => {
                       {uploadingImage ? 'Comprimindo...' : 'Enviar Imagens'}
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.heic,.heif,image/heic,image/heif"
                         multiple
                         className="hidden"
                         onChange={handleUploadProductImage}

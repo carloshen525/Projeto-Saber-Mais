@@ -34,3 +34,4 @@ DROP POLICY IF EXISTS "Apenas admins atualizam pedidos" ON public.orders;
 DROP POLICY IF EXISTS "Apenas admins deletam pedidos" ON public.orders;
 CREATE POLICY "Permitir gerenciar pedidos" ON public.orders
   FOR ALL USING (true) WITH CHECK (true);
+

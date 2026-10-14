@@ -456,6 +456,93 @@ export const broadcastService = {
   },
 
   /**
+   * Prepara o valor da mídia para a Evolution API.
+   * Regras da Evolution API:
+   * 1. URL pública válida (https://...)
+   * 2. Base64 puro (sem o prefixo "data:image/...;base64,")
+   */
+  async prepareMediaForEvolution(imageUrl: string, storeUrl?: string): Promise<string> {
+    let media = (imageUrl || '').trim();
+
+    // 1. Se for um Data URL base64 (ex: data:image/jpeg;base64,xxxx)
+    if (media.startsWith('data:') && media.includes(';base64,')) {
+      return media.split(';base64,')[1].trim();
+    }
+
+    // 2. Se for um Data URL SVG (ex: data:image/svg+xml;...)
+    if (media.startsWith('data:image/svg+xml')) {
+      try {
+        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Falha ao renderizar SVG'));
+            img.src = media;
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || 800;
+          canvas.height = img.naturalHeight || 600;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const pngDataUrl = canvas.toDataURL('image/png');
+            if (pngDataUrl.includes(';base64,')) {
+              return pngDataUrl.split(';base64,')[1].trim();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Falha ao rasterizar SVG para base64:', err);
+      }
+    }
+
+    // 3. Se for caminho relativo (ex: /logo.png)
+    if (media.startsWith('/')) {
+      const baseDomain = (
+        storeUrl || (typeof window !== 'undefined' ? window.location.origin : '')
+      ).replace(/\/+$/, '');
+      if (baseDomain && !baseDomain.includes('localhost') && !baseDomain.includes('127.0.0.1')) {
+        media = `${baseDomain}${media}`;
+      }
+    }
+
+    // 4. Se for localhost ou relativo, converte para base64 puro direto no navegador
+    if (
+      typeof window !== 'undefined' &&
+      (media.includes('localhost') || media.startsWith('/') || !media.startsWith('http'))
+    ) {
+      try {
+        const response = await fetch(media);
+        const blob = await response.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = String(reader.result || '');
+            if (result.includes(';base64,')) {
+              resolve(result.split(';base64,')[1].trim());
+            } else {
+              resolve(result);
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('Não foi possível converter imagem local em base64:', e);
+      }
+    }
+
+    // 5. Se já for uma URL pública válida (https://...)
+    if (/^https?:\/\//i.test(media) && !media.includes('localhost') && !media.includes('127.0.0.1')) {
+      return media;
+    }
+
+    // 6. Fallback de emergência (PNG transparente 1x1 em base64 puro)
+    return 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  },
+
+  /**
    * Envia Imagem + Legenda usando a Evolution API (/message/sendMedia)
    */
   async sendMediaMessage(
@@ -464,19 +551,21 @@ export const broadcastService = {
     instanceName: string,
     recipientGroupId: string,
     imageUrl: string,
-    caption: string
+    caption: string,
+    storeUrl?: string
   ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
     const base = this.cleanBaseUrl(apiUrl);
 
     this.validateMixedContent(base);
 
     try {
-      const endpoint = `${base}/message/sendMedia/${encodeURIComponent(instanceName)}`;
+      const endpoint = `${base}/message/sendMedia/${encodeURIComponent(instanceName.trim())}`;
+      const mediaPayload = await this.prepareMediaForEvolution(imageUrl, storeUrl);
 
       const body = {
-        number: recipientGroupId,
+        number: recipientGroupId.trim(),
         mediatype: 'image',
-        media: imageUrl,
+        media: mediaPayload,
         caption,
       };
 
@@ -680,7 +769,7 @@ export const broadcastService = {
     // Obter imagem principal
     let coverUrl = productToBroadcast.images?.[0]?.image_url || '';
     if (!coverUrl) {
-      coverUrl = `${window.location.origin}/logo.png`;
+      coverUrl = typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '/logo.png';
     }
 
     // Montar mensagem comercial
@@ -693,7 +782,8 @@ export const broadcastService = {
       config.instance_id,
       config.grupo_id,
       coverUrl,
-      caption
+      caption,
+      storeUrl
     );
 
     const nowIso = new Date().toISOString();

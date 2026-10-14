@@ -191,6 +191,7 @@ export const broadcastService = {
     }
     url = url.replace(/\/+$/, '');
     // Remove sufixos comuns que o usuário possa ter colado por engano
+    url = url.replace(/\/manager\/?$/i, '');
     url = url.replace(/\/instance(\/fetchinstances)?\/?$/i, '');
     url = url.replace(/\/group(\/fetchallgroups)?\/?$/i, '');
     url = url.replace(/\/message(\/sendmedia)?\/?$/i, '');

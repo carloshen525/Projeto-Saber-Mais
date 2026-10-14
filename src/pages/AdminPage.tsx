@@ -59,12 +59,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { WhatsAppBroadcastTab } from '@/components/admin/WhatsAppBroadcastTab';
 
 type AdminTab =
   | 'dashboard'
   | 'materiais'
   | 'categorias'
   | 'pedidos'
+  | 'divulgacao'
   | 'aparencia'
   | 'configuracoes';
 
@@ -83,6 +85,7 @@ const productFormSchema = z.object({
   sale_price: z.coerce.number().nullable().optional(),
   featured: z.boolean(),
   active: z.boolean(),
+  allow_auto_broadcast: z.boolean(),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -110,6 +113,7 @@ export const AdminPage: React.FC = () => {
     deleteProduct,
     saveCategory,
     deleteCategory,
+    toggleProductBroadcast,
     updateOrderStatus,
   } = useStore();
 
@@ -169,6 +173,7 @@ export const AdminPage: React.FC = () => {
       sale_price: null,
       featured: false,
       active: true,
+      allow_auto_broadcast: true,
     },
   });
 
@@ -206,6 +211,7 @@ export const AdminPage: React.FC = () => {
       sale_price: null,
       featured: false,
       active: true,
+      allow_auto_broadcast: true,
     });
     setProductImages([]);
     setProductFiles([]);
@@ -226,6 +232,7 @@ export const AdminPage: React.FC = () => {
       sale_price: prod.sale_price,
       featured: prod.featured,
       active: prod.active,
+      allow_auto_broadcast: prod.allow_auto_broadcast !== false,
     });
     setProductImages(prod.images || []);
     setProductFiles(prod.files || []);
@@ -356,6 +363,8 @@ export const AdminPage: React.FC = () => {
         values.sale_price && values.sale_price > 0 ? values.sale_price : null,
       featured: values.featured,
       active: values.active,
+      allow_auto_broadcast: values.allow_auto_broadcast !== false,
+      last_broadcast_at: editingProduct?.last_broadcast_at || null,
       images: finalImages,
       files: productFiles,
     });
@@ -453,6 +462,11 @@ export const AdminPage: React.FC = () => {
       label: 'Pedidos',
       icon: <ShoppingBag className="h-4 w-4" />,
       badge: orders.length,
+    },
+    {
+      id: 'divulgacao',
+      label: 'Divulgação WhatsApp',
+      icon: <MessageCircle className="h-4 w-4 text-emerald-500" />,
     },
     { id: 'aparencia', label: 'Aparência', icon: <Palette className="h-4 w-4" /> },
     {
@@ -838,11 +852,34 @@ export const AdminPage: React.FC = () => {
                             )}
                           </td>
                           <td className="px-4 py-3.5">
-                            <div className="flex flex-wrap gap-1">
-                              <Badge variant={prod.active ? 'emerald' : 'secondary'}>
-                                {prod.active ? 'Ativo' : 'Inativo'}
-                              </Badge>
-                              {prod.featured && <Badge variant="amber">Destaque</Badge>}
+                            <div className="flex flex-col gap-1">
+                              <div className="flex flex-wrap gap-1">
+                                <Badge variant={prod.active ? 'emerald' : 'secondary'}>
+                                  {prod.active ? 'Ativo' : 'Inativo'}
+                                </Badge>
+                                {prod.featured && <Badge variant="amber">Destaque</Badge>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const newState = !(prod.allow_auto_broadcast !== false);
+                                  await toggleProductBroadcast(prod.id, newState);
+                                  toast.success(
+                                    newState
+                                      ? 'Produto agora participa da divulgação!'
+                                      : 'Produto pausado da divulgação.'
+                                  );
+                                }}
+                                title="Clique para alternar participação na divulgação WhatsApp"
+                                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold cursor-pointer transition-colors ${
+                                  prod.allow_auto_broadcast !== false
+                                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                                }`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${prod.allow_auto_broadcast !== false ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                {prod.allow_auto_broadcast !== false ? 'Divulgação Ativa' : 'Sem Divulgação'}
+                              </button>
                             </div>
                           </td>
                           <td className="px-4 py-3.5 text-right">
@@ -1061,6 +1098,13 @@ export const AdminPage: React.FC = () => {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* ================================================================
+              4.5 DIVULGAÇÃO WHATSAPP TAB (EVOLUTION API)
+          ================================================================ */}
+          {activeTab === 'divulgacao' && (
+            <WhatsAppBroadcastTab primaryColor={primaryColor} />
           )}
 
           {/* ================================================================
@@ -1656,6 +1700,14 @@ export const AdminPage: React.FC = () => {
                     className="h-4 w-4 rounded accent-[#207182]"
                   />
                   Material Ativo na Loja
+                </label>
+                <label className="flex items-center gap-2 pt-5 text-sm font-bold text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...productForm.register('allow_auto_broadcast')}
+                    className="h-4 w-4 rounded accent-emerald-600"
+                  />
+                  Participa da Divulgação WhatsApp
                 </label>
               </div>
 

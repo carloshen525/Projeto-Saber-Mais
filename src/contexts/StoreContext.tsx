@@ -20,6 +20,7 @@ interface StoreContextType {
     prod: Omit<Product, 'id' | 'created_at' | 'category'> & { id?: string }
   ) => Promise<Product>;
   deleteProduct: (id: string) => Promise<void>;
+  toggleProductBroadcast: (productId: string, allow: boolean) => Promise<void>;
   createOrder: (order: Omit<Order, 'id' | 'created_at' | 'status'>) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
 }
@@ -129,6 +130,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refreshAll();
   };
 
+  const toggleProductBroadcast = async (productId: string, allow: boolean) => {
+    await storeService.toggleProductBroadcast(productId, allow);
+    await refreshAll();
+  };
+
   const createOrder = async (order: Omit<Order, 'id' | 'created_at' | 'status'>) => {
     const created = await storeService.createOrder(order);
     await refreshAll();
@@ -157,6 +163,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteCategory,
         saveProduct,
         deleteProduct,
+        toggleProductBroadcast,
         createOrder,
         updateOrderStatus,
       }}

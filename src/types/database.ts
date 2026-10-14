@@ -57,11 +57,42 @@ export interface Product {
   featured: boolean;
   active: boolean;
   created_at: string;
+  allow_auto_broadcast?: boolean;
+  last_broadcast_at?: string | null;
   // Joined / computed relations
   category?: Category;
   images: ProductImage[];
   files: ProductFile[];
   preview_pages?: { title: string; pageNumber: number; summary: string; imageUrl?: string }[];
+}
+
+export interface WhatsAppBroadcastConfig {
+  id: string;
+  ativo: boolean;
+  evolution_api_url: string;
+  evolution_api_key: string;
+  instance_id: string;
+  grupo_id: string;
+  grupo_nome?: string;
+  horario_inicio: string; // ex: '08:00'
+  horario_fim: string;    // ex: '21:00'
+  intervalo_minutos: number; // ex: 15, 30, 60, etc
+  min_dias_repeticao: number; // ex: 3 dias antes de poder repetir o mesmo produto
+  ultimo_envio_em?: string | null;
+  criado_em?: string;
+}
+
+export interface WhatsAppBroadcastHistory {
+  id: string;
+  produto_id: string;
+  produto_nome: string;
+  produto_preco: number;
+  produto_slug: string;
+  grupo_id: string;
+  grupo_nome?: string;
+  enviado_em: string;
+  status: 'sucesso' | 'erro';
+  mensagem_erro?: string | null;
 }
 
 export interface CartItem {

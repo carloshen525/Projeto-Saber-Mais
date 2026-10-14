@@ -218,6 +218,8 @@ export const storeService = {
             sale_price: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
             featured: Boolean(row.featured),
             active: Boolean(row.active),
+            allow_auto_broadcast: row.allow_auto_broadcast !== false,
+            last_broadcast_at: (row.last_broadcast_at as string) || null,
             created_at: String(row.created_at || new Date().toISOString()),
             category: row.category_id ? categoryMap.get(String(row.category_id)) : undefined,
             images: ((row.product_images as Product['images']) || []).sort(
@@ -266,6 +268,8 @@ export const storeService = {
           : null,
       featured: Boolean(productInput.featured),
       active: Boolean(productInput.active),
+      allow_auto_broadcast: productInput.allow_auto_broadcast !== false,
+      last_broadcast_at: productInput.last_broadcast_at || null,
       created_at: isEdit
         ? products.find((p) => p.id === id)?.created_at || now
         : now,
@@ -304,6 +308,7 @@ export const storeService = {
           sale_price: record.sale_price,
           featured: record.featured,
           active: record.active,
+          allow_auto_broadcast: record.allow_auto_broadcast,
         })
         .select()
         .maybeSingle();
@@ -351,6 +356,20 @@ export const storeService = {
     writeLocal(
       STORAGE_KEYS.PRODUCTS,
       products.filter((p) => p.id !== id)
+    );
+  },
+
+  async toggleProductBroadcast(id: string, allow: boolean): Promise<void> {
+    if (isSupabaseConfigured) {
+      await supabase
+        .from('products')
+        .update({ allow_auto_broadcast: allow })
+        .eq('id', id);
+    }
+    const products = await this.getProducts();
+    writeLocal(
+      STORAGE_KEYS.PRODUCTS,
+      products.map((p) => (p.id === id ? { ...p, allow_auto_broadcast: allow } : p))
     );
   },
 

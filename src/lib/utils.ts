@@ -74,8 +74,6 @@ export function formatWhatsAppOrderMessage(
     itemLines,
     'Total:',
     `${formatPriceSimple(total)}${couponLine}`,
-    `Nome: ${customerName.trim() || 'Não informado'}`,
-    `Email: ${customerEmail.trim() || 'Não informado'}`,
   ].join('\n');
 }
 

@@ -38,8 +38,6 @@ export const CartDrawer: React.FC = () => {
   } = useCart();
   const { settings, createOrder } = useStore();
 
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [couponInput, setCouponInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -64,8 +62,8 @@ export const CartDrawer: React.FC = () => {
     try {
       // Save order record for Admin -> Pedidos tracking
       await createOrder({
-        customer_name: customerName.trim() || 'Visitante WhatsApp',
-        customer_email: customerEmail.trim() || 'Não informado',
+        customer_name: 'Cliente WhatsApp',
+        customer_email: '',
         items: items.map((item) => {
           const unitPrice = getEffectivePrice(item.product.price, item.product.sale_price);
           return {
@@ -87,8 +85,8 @@ export const CartDrawer: React.FC = () => {
       const message = formatWhatsAppOrderMessage(
         items,
         total,
-        customerName,
-        customerEmail,
+        '',
+        '',
         appliedCoupon?.code
       );
       const whatsappUrl = buildWhatsAppUrl(settings.whatsapp || '5535998754516', message);
@@ -272,38 +270,11 @@ export const CartDrawer: React.FC = () => {
                 </div>
               </div>
 
-              {/* Drawer Footer: Customer Details + Totals + WhatsApp Button */}
+              {/* Drawer Footer: Totals + WhatsApp Button */}
               <form
                 onSubmit={handleCheckoutWhatsApp}
                 className="border-t border-slate-100 bg-slate-50/60 px-4 sm:px-6 py-4 space-y-3 dark:border-slate-800 dark:bg-slate-900"
               >
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      Seu Nome
-                    </label>
-                    <Input
-                      required
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Ex: Profª. Ana Silva"
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      Seu E-mail (p/ envio)
-                    </label>
-                    <Input
-                      type="email"
-                      required
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="ana@email.com"
-                      className="h-9 text-xs"
-                    />
-                  </div>
-                </div>
 
                 <div className="space-y-1 pt-1 text-sm">
                   <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">

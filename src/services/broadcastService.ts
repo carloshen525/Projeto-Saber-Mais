@@ -211,8 +211,6 @@ export const broadcastService = {
     return {
       'Content-Type': 'application/json',
       apikey: cleanKey,
-      apiKey: cleanKey,
-      Authorization: `Bearer ${cleanKey}`,
     };
   },
 

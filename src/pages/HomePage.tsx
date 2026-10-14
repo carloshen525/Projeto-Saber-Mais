@@ -275,7 +275,7 @@ export const HomePage: React.FC = () => {
 
         {/* Skeleton Loading State */}
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
               <div
                 key={idx}
@@ -319,7 +319,7 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

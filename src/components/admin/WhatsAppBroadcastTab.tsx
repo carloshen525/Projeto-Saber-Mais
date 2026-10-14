@@ -17,6 +17,8 @@ import {
   Eye,
   Sliders,
   History,
+  Info,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/contexts/StoreContext';
@@ -55,7 +57,12 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingInstances, setIsFetchingInstances] = useState(false);
   const [isFetchingGroups, setIsFetchingGroups] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isTriggeringNow, setIsTriggeringNow] = useState(false);
+
+  // Modos de digitação manual vs dropdown
+  const [manualInstanceMode, setManualInstanceMode] = useState(false);
+  const [manualGroupMode, setManualGroupMode] = useState(false);
 
   // Preview de mensagem comercial
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
@@ -89,28 +96,7 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
     };
   }, []);
 
-  // 2. Quando carregar config com URL e Key, busca instâncias se ainda não tiver
-  useEffect(() => {
-    if (config.evolution_api_url && config.evolution_api_key && instances.length === 0) {
-      handleFetchInstances(config.evolution_api_url, config.evolution_api_key);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.evolution_api_url, config.evolution_api_key]);
-
-  // 3. Quando tiver instância selecionada, busca grupos
-  useEffect(() => {
-    if (
-      config.evolution_api_url &&
-      config.evolution_api_key &&
-      config.instance_id &&
-      groups.length === 0
-    ) {
-      handleFetchGroups(config.evolution_api_url, config.evolution_api_key, config.instance_id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.instance_id]);
-
-  // 4. Robô em segundo plano quando a página administrativa estiver aberta
+  // 2. Robô em segundo plano quando a página administrativa estiver aberta
   useEffect(() => {
     if (!config.ativo) {
       if (runnerTimerRef.current) clearInterval(runnerTimerRef.current);
@@ -142,8 +128,8 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
 
   // Ações de API
   const handleFetchInstances = async (url?: string, key?: string) => {
-    const apiUrl = url || config.evolution_api_url;
-    const apiKey = key || config.evolution_api_key;
+    const apiUrl = (url || config.evolution_api_url || '').trim();
+    const apiKey = (key || config.evolution_api_key || '').trim();
     if (!apiUrl || !apiKey) {
       toast.error('Informe a URL e a API Key da Evolution API primeiro.');
       return;
@@ -154,26 +140,61 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
       setInstances(list);
       if (list.length > 0) {
         toast.success(`${list.length} instância(s) encontrada(s)!`);
+        setManualInstanceMode(false);
         if (!config.instance_id && list[0]) {
           setConfig((prev) => ({ ...prev, instance_id: list[0].instanceName }));
         }
       } else {
-        toast.info('Nenhuma instância encontrada na sua Evolution API.');
+        toast.info('Nenhuma instância listada. Digite o nome da sua instância manualmente.');
+        setManualInstanceMode(true);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      toast.error(msg);
+      toast.error(msg, { duration: 6000 });
+      setManualInstanceMode(true);
     } finally {
       setIsFetchingInstances(false);
     }
   };
 
+  const handleCheckConnection = async () => {
+    const apiUrl = (config.evolution_api_url || '').trim();
+    const apiKey = (config.evolution_api_key || '').trim();
+    const instName = (config.instance_id || '').trim();
+    if (!apiUrl || !apiKey) {
+      toast.error('Informe a URL e a API Key da Evolution API.');
+      return;
+    }
+    if (!instName) {
+      toast.error('Informe o Nome da Instância para testar.');
+      return;
+    }
+    setIsTestingConnection(true);
+    try {
+      const res = await broadcastService.checkInstanceConnection(apiUrl, apiKey, instName);
+      if (res.connected) {
+        toast.success(res.details, { duration: 5000 });
+      } else {
+        toast.warning(res.details, { duration: 6000 });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const handleFetchGroups = async (url?: string, key?: string, instance?: string) => {
-    const apiUrl = url || config.evolution_api_url;
-    const apiKey = key || config.evolution_api_key;
-    const instName = instance || config.instance_id;
-    if (!apiUrl || !apiKey || !instName) {
-      toast.error('Selecione uma instância antes de buscar os grupos.');
+    const apiUrl = (url || config.evolution_api_url || '').trim();
+    const apiKey = (key || config.evolution_api_key || '').trim();
+    const instName = (instance || config.instance_id || '').trim();
+    if (!apiUrl || !apiKey) {
+      toast.error('Informe a URL e a API Key da Evolution API.');
+      return;
+    }
+    if (!instName) {
+      toast.error('Informe o nome da instância antes de buscar os grupos.');
       return;
     }
     setIsFetchingGroups(true);
@@ -182,6 +203,7 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
       setGroups(groupList);
       if (groupList.length > 0) {
         toast.success(`${groupList.length} grupo(s) de WhatsApp localizado(s)!`);
+        setManualGroupMode(false);
         if (!config.grupo_id && groupList[0]) {
           setConfig((prev) => ({
             ...prev,
@@ -190,11 +212,13 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
           }));
         }
       } else {
-        toast.info('Nenhum grupo encontrado nesta instância.');
+        toast.info('Nenhum grupo encontrado nesta instância. Você pode digitar o ID do grupo manualmente.');
+        setManualGroupMode(true);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      toast.error(msg);
+      toast.error(msg, { duration: 6000 });
+      setManualGroupMode(true);
     } finally {
       setIsFetchingGroups(false);
     }
@@ -417,37 +441,81 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
               </Button>
             </div>
 
+            {/* Banner de Ajuda / Dica de Conexão */}
+            <div className="rounded-xl bg-sky-50 dark:bg-sky-950/40 p-3.5 border border-sky-100 dark:border-sky-900/50 flex items-start gap-2.5 text-xs text-sky-800 dark:text-sky-200">
+              <Info className="h-4 w-4 shrink-0 text-sky-600 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold">Como conectar sua Evolution API:</p>
+                <p>
+                  • Se você possui a <strong>Global Master Key</strong>: clique no botão <strong>"Listar Instâncias"</strong> acima para carregar automaticamente.
+                </p>
+                <p>
+                  • Se você possui uma <strong>Chave Individual da Instância</strong> (ou se o servidor bloquear listagem geral): basta digitar o <strong>Nome da Instância</strong> no campo abaixo e clicar em <strong>"Testar Conexão"</strong>.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  URL da Evolution API
+                  URL da Evolution API *
                 </label>
                 <Input
                   value={config.evolution_api_url}
                   onChange={(e) => setConfig((s) => ({ ...s, evolution_api_url: e.target.value }))}
                   placeholder="https://api.seuservidor.com"
                 />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Ex: https://api.seudominio.com (sem barra no final)
+                </p>
               </div>
 
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  API Key Global ou da Instância
+                  API Key Global ou da Instância *
                 </label>
                 <Input
                   type="password"
                   value={config.evolution_api_key}
                   onChange={(e) => setConfig((s) => ({ ...s, evolution_api_key: e.target.value }))}
-                  placeholder="B6D711FCDE4D4FD5936544120E713976"
+                  placeholder="Ex: B6D711FCDE4D4FD5936544120E713976"
                 />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Chave mestra (Global) ou token individual da instância
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
+              {/* Campo Instância */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Instância Conectada
-                </label>
-                {instances.length > 0 ? (
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Instância WhatsApp *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCheckConnection}
+                      disabled={isTestingConnection || !config.instance_id}
+                      className="text-[11px] font-bold text-[#207182] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isTestingConnection ? 'animate-spin' : ''}`} />
+                      {isTestingConnection ? 'Testando...' : 'Testar Conexão'}
+                    </button>
+                    {instances.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setManualInstanceMode(!manualInstanceMode)}
+                        className="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                      >
+                        {manualInstanceMode ? 'Ver Lista' : 'Digitar'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {instances.length > 0 && !manualInstanceMode ? (
                   <select
                     value={config.instance_id}
                     onChange={(e) => {
@@ -471,23 +539,40 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
                     placeholder="Nome da Instância (ex: sabermais)"
                   />
                 )}
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Nome exato da instância cadastrada na sua Evolution API
+                </p>
               </div>
 
+              {/* Campo Grupo */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Grupo de WhatsApp Destino
+                    Grupo de WhatsApp Destino *
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => handleFetchGroups()}
-                    disabled={isFetchingGroups}
-                    className="text-[11px] font-bold text-[#207182] hover:underline cursor-pointer"
-                  >
-                    {isFetchingGroups ? 'Carregando...' : 'Atualizar Grupos'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleFetchGroups()}
+                      disabled={isFetchingGroups || !config.instance_id}
+                      className="text-[11px] font-bold text-[#207182] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isFetchingGroups ? 'animate-spin' : ''}`} />
+                      {isFetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
+                    </button>
+                    {groups.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setManualGroupMode(!manualGroupMode)}
+                        className="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                      >
+                        {manualGroupMode ? 'Ver Lista' : 'Digitar ID'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {groups.length > 0 ? (
+
+                {groups.length > 0 && !manualGroupMode ? (
                   <select
                     value={config.grupo_id}
                     onChange={(e) => {
@@ -512,9 +597,12 @@ export const WhatsAppBroadcastTab: React.FC<WhatsAppBroadcastTabProps> = ({
                   <Input
                     value={config.grupo_id}
                     onChange={(e) => setConfig((s) => ({ ...s, grupo_id: e.target.value }))}
-                    placeholder="ID do Grupo (ex: 120363044123@g.us)"
+                    placeholder="ID do Grupo (ex: 120363044123456789@g.us)"
                   />
                 )}
+                <p className="mt-1 text-[11px] text-slate-400">
+                  ID do grupo no WhatsApp (termina com @g.us)
+                </p>
               </div>
             </div>
           </Card>

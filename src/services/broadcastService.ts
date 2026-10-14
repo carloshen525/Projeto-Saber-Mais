@@ -180,38 +180,174 @@ export const broadcastService = {
   // EVOLUTION API INTEGRATION
   // =========================================================================
   cleanBaseUrl(rawUrl: string): string {
-    return rawUrl.trim().replace(/\/+$/, '');
+    let url = (rawUrl || '').trim();
+    if (!url) return '';
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+    url = url.replace(/\/+$/, '');
+    // Remove sufixos comuns que o usuário possa ter colado por engano
+    url = url.replace(/\/instance(\/fetchinstances)?\/?$/i, '');
+    url = url.replace(/\/group(\/fetchallgroups)?\/?$/i, '');
+    url = url.replace(/\/message(\/sendmedia)?\/?$/i, '');
+    return url;
+  },
+
+  getHeaders(apiKey: string) {
+    const cleanKey = (apiKey || '').trim();
+    return {
+      'Content-Type': 'application/json',
+      apikey: cleanKey,
+      apiKey: cleanKey,
+      Authorization: `Bearer ${cleanKey}`,
+    };
   },
 
   async fetchInstances(apiUrl: string, apiKey: string): Promise<EvolutionInstance[]> {
     const base = this.cleanBaseUrl(apiUrl);
-    if (!base || !apiKey) return [];
+    if (!base) throw new Error('Informe a URL da Evolution API.');
+    if (!apiKey?.trim()) throw new Error('Informe a API Key da Evolution API.');
 
     try {
       const res = await fetch(`${base}/instance/fetchInstances`, {
         method: 'GET',
-        headers: {
-          apikey: apiKey.trim(),
-        },
+        headers: this.getHeaders(apiKey),
       });
 
       if (!res.ok) {
-        throw new Error(`Erro na Evolution API: ${res.statusText}`);
+        let errorDetail = '';
+        try {
+          const errData = await res.json();
+          errorDetail =
+            errData.message ||
+            errData.error ||
+            (Array.isArray(errData.response?.message)
+              ? errData.response.message.join(', ')
+              : errData.response?.message) ||
+            '';
+        } catch {
+          errorDetail = await res.text().catch(() => '');
+        }
+
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            `Chave de API sem permissão para listar instâncias (HTTP ${res.status}). Dica: Se você possui apenas a chave da sua instância individual, basta digitar o nome da instância manualmente no campo abaixo.`
+          );
+        }
+
+        if (res.status === 404) {
+          throw new Error(
+            `Rota não encontrada (HTTP 404). Verifique se a URL informada é a base da sua Evolution API (ex: https://api.seudominio.com).`
+          );
+        }
+
+        throw new Error(
+          `HTTP ${res.status}${errorDetail ? `: ${errorDetail}` : res.statusText ? ` (${res.statusText})` : ''}`
+        );
       }
 
       const json = await res.json();
       // Evolution API v2 or v1 returns array of instances
       const list = Array.isArray(json) ? json : json?.instances || [];
-      return list.map((item: Record<string, unknown>) => {
-        const inst = (item.instance || item) as Record<string, unknown>;
-        return {
-          instanceName: String(inst.instanceName || inst.name || ''),
-          status: String(inst.status || inst.connectionStatus || 'open'),
-        };
-      });
+      return list
+        .map((item: Record<string, unknown>) => {
+          const inst = (item.instance || item) as Record<string, unknown>;
+          return {
+            instanceName: String(inst.instanceName || inst.name || ''),
+            status: String(inst.status || inst.connectionStatus || 'open'),
+          };
+        })
+        .filter((item: EvolutionInstance) => Boolean(item.instanceName));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Não foi possível listar as instâncias: ${msg}`);
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      if (rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError')) {
+        throw new Error(
+          `Falha de conexão com a Evolution API. Verifique se a URL está correta e com "https://", se o servidor está online e se permite requisições externas (CORS). Dica: você pode digitar o nome da instância manualmente.`
+        );
+      }
+      throw new Error(rawMsg);
+    }
+  },
+
+  async checkInstanceConnection(
+    apiUrl: string,
+    apiKey: string,
+    instanceName: string
+  ): Promise<{ connected: boolean; state: string; details: string }> {
+    const base = this.cleanBaseUrl(apiUrl);
+    if (!base) throw new Error('Informe a URL da Evolution API.');
+    if (!apiKey?.trim()) throw new Error('Informe a API Key.');
+    if (!instanceName?.trim()) throw new Error('Informe o nome da instância.');
+
+    try {
+      const res = await fetch(
+        `${base}/instance/connectionState/${encodeURIComponent(instanceName.trim())}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders(apiKey),
+        }
+      );
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          return {
+            connected: false,
+            state: 'nao_encontrada',
+            details: `A instância "${instanceName}" não foi encontrada no servidor da Evolution API (HTTP 404).`,
+          };
+        }
+        if (res.status === 401 || res.status === 403) {
+          return {
+            connected: false,
+            state: 'nao_autorizado',
+            details: `Acesso não autorizado à instância "${instanceName}". Verifique se a API Key informada está correta.`,
+          };
+        }
+        return {
+          connected: false,
+          state: `http_${res.status}`,
+          details: `Servidor retornou erro HTTP ${res.status}.`,
+        };
+      }
+
+      const json = await res.json();
+      const state = String(
+        json?.instance?.state ||
+          json?.instance?.connectionStatus ||
+          json?.state ||
+          json?.connectionStatus ||
+          'unknown'
+      ).toLowerCase();
+
+      if (state === 'open' || state === 'connected') {
+        return {
+          connected: true,
+          state,
+          details: `Instância "${instanceName}" conectada e pronta para envio no WhatsApp! (Status: ${state})`,
+        };
+      } else if (state === 'connecting') {
+        return {
+          connected: false,
+          state,
+          details: `Instância "${instanceName}" está conectando ou aguardando leitura do QR Code. (Status: ${state})`,
+        };
+      } else {
+        return {
+          connected: false,
+          state,
+          details: `Instância "${instanceName}" encontrada, mas está desconectada do WhatsApp. (Status: ${state})`,
+        };
+      }
+    } catch (err: unknown) {
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      if (rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError')) {
+        return {
+          connected: false,
+          state: 'erro_rede',
+          details: 'Falha de conexão com a Evolution API. Verifique a URL e CORS.',
+        };
+      }
+      return { connected: false, state: 'erro', details: rawMsg };
     }
   },
 
@@ -224,15 +360,29 @@ export const broadcastService = {
     if (!base || !apiKey || !instanceName) return [];
 
     try {
-      const res = await fetch(`${base}/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`, {
-        method: 'GET',
-        headers: {
-          apikey: apiKey.trim(),
-        },
-      });
+      const res = await fetch(
+        `${base}/group/fetchAllGroups/${encodeURIComponent(instanceName.trim())}?getParticipants=false`,
+        {
+          method: 'GET',
+          headers: this.getHeaders(apiKey),
+        }
+      );
 
       if (!res.ok) {
-        throw new Error(`Erro ao buscar grupos da instância: ${res.statusText}`);
+        let errDetail = '';
+        try {
+          const errData = await res.json();
+          errDetail = errData.message || errData.error || '';
+        } catch {
+          errDetail = await res.text().catch(() => '');
+        }
+        if (res.status === 404) {
+          throw new Error(`Instância "${instanceName}" não encontrada ao buscar grupos.`);
+        }
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('Chave de API inválida ou sem permissão para acessar os grupos desta instância.');
+        }
+        throw new Error(`HTTP ${res.status}${errDetail ? `: ${errDetail}` : ''}`);
       }
 
       const json = await res.json();
@@ -245,7 +395,12 @@ export const broadcastService = {
         .filter((g: EvolutionGroup) => g.id.includes('@g.us'));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Falha ao carregar grupos do WhatsApp: ${msg}`);
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        throw new Error(
+          'Falha de rede ao buscar grupos. Dica: você pode colar o ID do Grupo manualmente (ex: 120363xxxxxx@g.us).'
+        );
+      }
+      throw new Error(msg);
     }
   },
 
@@ -308,10 +463,7 @@ export const broadcastService = {
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: apiKey.trim(),
-        },
+        headers: this.getHeaders(apiKey),
         body: JSON.stringify(body),
       });
 
@@ -575,3 +727,4 @@ export const broadcastService = {
     }
   },
 };
+

@@ -59,3 +59,4 @@ CREATE POLICY "Permitir gerenciar broadcast config" ON public.whatsapp_broadcast
 DROP POLICY IF EXISTS "Permitir gerenciar broadcast history" ON public.whatsapp_broadcast_history;
 CREATE POLICY "Permitir gerenciar broadcast history" ON public.whatsapp_broadcast_history
   FOR ALL USING (true) WITH CHECK (true);
+

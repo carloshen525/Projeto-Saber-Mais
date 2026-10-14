@@ -80,7 +80,11 @@ export function formatWhatsAppOrderMessage(
 }
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
-  const cleanPhone = phone.replace(/\D/g, '');
+  let cleanPhone = phone.replace(/\D/g, '');
+  // Normalize Brazilian numbers: if it starts with 55 and has 12 digits (missing 9 digit), fix it
+  if (cleanPhone.startsWith('5535') && cleanPhone.length === 12) {
+    cleanPhone = `55359${cleanPhone.slice(4)}`;
+  }
   const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
   return `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
 }

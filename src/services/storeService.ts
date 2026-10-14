@@ -166,7 +166,11 @@ export const storeService = {
 
   async deleteCategory(id: string): Promise<void> {
     if (isSupabaseConfigured) {
-      await supabase.from('categories').delete().eq('id', id);
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) {
+        console.error('Erro ao deletar categoria no Supabase:', error);
+        throw new Error(error.message);
+      }
     }
     const categories = await this.getCategories();
     writeLocal(

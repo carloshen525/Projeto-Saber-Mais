@@ -934,10 +934,15 @@ export const AdminPage: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={async () => {
-                          await deleteCategory(cat.id);
-                          toast.success('Categoria removida.');
+                          try {
+                            await deleteCategory(cat.id);
+                            toast.success('Categoria removida com sucesso!');
+                          } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : 'Erro ao remover categoria.';
+                            toast.error(`Não foi possível remover: ${msg}`);
+                          }
                         }}
-                        className="text-red-500"
+                        className="text-red-500 cursor-pointer"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

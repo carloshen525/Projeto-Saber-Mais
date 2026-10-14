@@ -50,6 +50,32 @@ function writeLocal<T>(key: string, data: T): void {
 
 export const storeService = {
   // =========================================================================
+  // CACHE INSTANTÂNEO (0ms DE LATÊNCIA)
+  // =========================================================================
+  getCachedSettings(): StoreSettings {
+    return readLocal<StoreSettings>(STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
+  },
+
+  getCachedCategories(): Category[] {
+    const local = readLocal<Category[]>(STORAGE_KEYS.CATEGORIES, INITIAL_CATEGORIES);
+    return [...local].sort((a, b) => a.order_index - b.order_index);
+  },
+
+  getCachedProducts(): Product[] {
+    const local = readLocal<Product[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const categories = this.getCachedCategories();
+    const categoryMap = new Map(categories.map((c) => [c.id, c]));
+    return local.map((p) => ({
+      ...p,
+      category: p.category_id ? categoryMap.get(p.category_id) : undefined,
+    }));
+  },
+
+  getCachedOrders(): Order[] {
+    return readLocal<Order[]>(STORAGE_KEYS.ORDERS, []);
+  },
+
+  // =========================================================================
   // SETTINGS
   // =========================================================================
   async getSettings(): Promise<StoreSettings> {
@@ -238,6 +264,74 @@ export const storeService = {
       ...p,
       category: p.category_id ? categoryMap.get(p.category_id) : undefined,
     }));
+  },
+
+  async getProductBySlug(slug: string): Promise<Product | null> {
+    const cached = this.getCachedProducts().find((p) => p.slug === slug);
+    if (cached) return cached;
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*, product_images(*), product_files(*)')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (!error && data) {
+          const rawObjectives = data.pedagogical_objectives;
+          const objectives = Array.isArray(rawObjectives)
+            ? rawObjectives
+            : typeof rawObjectives === 'string' && rawObjectives.trim()
+            ? rawObjectives.split('\n').filter(Boolean)
+            : [];
+
+          const categories = await this.getCategories();
+          const category = categories.find((c) => c.id === data.category_id);
+
+          const prod: Product = {
+            id: String(data.id),
+            category_id: (data.category_id as string) || null,
+            name: String(data.name || ''),
+            slug: String(data.slug || ''),
+            short_description: String(data.short_description || ''),
+            description: String(data.description || ''),
+            pedagogical_objectives: objectives,
+            subject: String(data.subject || ''),
+            school_grade: String(data.school_grade || ''),
+            age_group: String(data.age_group || ''),
+            pages: Number(data.pages) || 1,
+            file_type: String(data.file_type || 'PDF'),
+            price: Number(data.price) || 0,
+            sale_price:
+              data.sale_price !== null && data.sale_price !== undefined
+                ? Number(data.sale_price)
+                : null,
+            featured: Boolean(data.featured),
+            active: Boolean(data.active),
+            allow_auto_broadcast: data.allow_auto_broadcast !== false,
+            last_broadcast_at: (data.last_broadcast_at as string) || null,
+            created_at: String(data.created_at || new Date().toISOString()),
+            category,
+            images: ((data.product_images as Product['images']) || []).sort(
+              (a, b) => a.order_index - b.order_index
+            ),
+            files: (data.product_files as Product['files']) || [],
+          };
+
+          const currentProducts = this.getCachedProducts();
+          if (!currentProducts.some((p) => p.id === prod.id)) {
+            writeLocal(STORAGE_KEYS.PRODUCTS, [prod, ...currentProducts]);
+          }
+
+          return prod;
+        }
+      } catch (err) {
+        console.warn('Erro ao buscar produto por slug:', err);
+      }
+    }
+
+    return null;
   },
 
   async saveProduct(

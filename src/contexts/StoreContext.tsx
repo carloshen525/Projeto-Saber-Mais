@@ -30,11 +30,15 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 const FAVORITES_KEY = 'sabermais_favorites_v1';
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [settings, setSettings] = useState<StoreSettings>(() => storeService.getCachedSettings());
+  const [categories, setCategories] = useState<Category[]>(() => storeService.getCachedCategories());
+  const [products, setProducts] = useState<Product[]>(() => storeService.getCachedProducts());
+  const [orders, setOrders] = useState<Order[]>(() => storeService.getCachedOrders());
+  // Se já temos produtos no cache local, carregamos instantaneamente sem delay
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const cached = storeService.getCachedProducts();
+    return cached.length === 0;
+  });
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(FAVORITES_KEY);
@@ -45,31 +49,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const refreshAll = useCallback(async () => {
-    const [loadedSettings, loadedCategories, loadedProducts, loadedOrders] = await Promise.all([
-      storeService.getSettings(),
-      storeService.getCategories(),
-      storeService.getProducts(),
-      storeService.getOrders(),
-    ]);
-    setSettings(loadedSettings);
-    setCategories(loadedCategories);
-    setProducts(loadedProducts);
-    setOrders(loadedOrders);
+    try {
+      const [loadedSettings, loadedCategories, loadedProducts, loadedOrders] = await Promise.all([
+        storeService.getSettings(),
+        storeService.getCategories(),
+        storeService.getProducts(),
+        storeService.getOrders(),
+      ]);
+      setSettings(loadedSettings);
+      setCategories(loadedCategories);
+      setProducts(loadedProducts);
+      setOrders(loadedOrders);
+    } catch (err) {
+      console.warn('Erro ao atualizar dados em segundo plano:', err);
+    }
   }, []);
 
   useEffect(() => {
     let active = true;
-    setIsLoading(true);
-    // Simulate a brief skeleton loading transition for smooth UX
-    const timer = setTimeout(() => {
-      refreshAll().finally(() => {
-        if (active) setIsLoading(false);
-      });
-    }, 220);
+
+    // Atualiza imediatamente em segundo plano (Stale-While-Revalidate)
+    refreshAll().finally(() => {
+      if (active) setIsLoading(false);
+    });
 
     return () => {
       active = false;
-      clearTimeout(timer);
     };
   }, [refreshAll]);
 

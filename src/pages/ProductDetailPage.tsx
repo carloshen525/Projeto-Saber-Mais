@@ -22,20 +22,48 @@ import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/catalog/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { storeService } from '@/services/storeService';
 import { formatCurrency, getEffectivePrice } from '@/lib/utils';
+import type { Product } from '@/types/database';
 
 export const ProductDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { settings, products, isFavorite, toggleFavorite } = useStore();
+  const { settings, products, isFavorite, toggleFavorite, isLoading } = useStore();
   const { addItem, updateQuantity, getItemQuantity, setIsCartOpen } = useCart();
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [directProduct, setDirectProduct] = useState<Product | null>(null);
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
 
-  const product = useMemo(
+  const productFromStore = useMemo(
     () => products.find((p) => p.slug === slug),
     [products, slug]
   );
+
+  useEffect(() => {
+    let mounted = true;
+    if (!productFromStore && slug) {
+      setIsDirectLoading(true);
+      storeService
+        .getProductBySlug(slug)
+        .then((res) => {
+          if (mounted) {
+            setDirectProduct(res);
+            setIsDirectLoading(false);
+          }
+        })
+        .catch(() => {
+          if (mounted) setIsDirectLoading(false);
+        });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [productFromStore, slug]);
+
+  const product = productFromStore || directProduct;
 
   useEffect(() => {
     setSelectedImageIndex(0);
@@ -70,6 +98,38 @@ export const ProductDetailPage: React.FC = () => {
   }, [product, products]);
 
   if (!product) {
+    if (isLoading || isDirectLoading) {
+      return (
+        <div className="min-h-screen flex flex-col bg-[#f8fafc] dark:bg-slate-950">
+          <Header />
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+            <div className="mb-6 flex items-center justify-between">
+              <Skeleton className="h-6 w-36 rounded-full" />
+              <Skeleton className="h-8 w-24 rounded-full" />
+            </div>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              <div className="lg:col-span-6 space-y-4">
+                <Skeleton className="aspect-[4/3] w-full rounded-3xl" />
+                <div className="flex gap-3">
+                  <Skeleton className="h-20 w-24 rounded-2xl" />
+                  <Skeleton className="h-20 w-24 rounded-2xl" />
+                  <Skeleton className="h-20 w-24 rounded-2xl" />
+                </div>
+              </div>
+              <div className="lg:col-span-6 space-y-5">
+                <Skeleton className="h-6 w-32 rounded-full" />
+                <Skeleton className="h-10 w-3/4 rounded-xl" />
+                <Skeleton className="h-20 w-full rounded-2xl" />
+                <Skeleton className="h-12 w-48 rounded-xl" />
+                <Skeleton className="h-14 w-full rounded-2xl" />
+              </div>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
         <Header />

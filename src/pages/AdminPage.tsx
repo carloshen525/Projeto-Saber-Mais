@@ -345,36 +345,43 @@ export const AdminPage: React.FC = () => {
             },
           ];
 
-    await saveProduct({
-      id: editingProduct?.id,
-      category_id: values.category_id || null,
-      name: values.name,
-      slug: values.slug || slugify(values.name),
-      short_description: '',
-      description: values.description,
-      pedagogical_objectives: [],
-      subject: values.subject,
-      school_grade: '',
-      age_group: '',
-      pages: values.pages,
-      file_type: values.file_type,
-      price: values.price,
-      sale_price:
-        values.sale_price && values.sale_price > 0 ? values.sale_price : null,
-      featured: values.featured,
-      active: values.active,
-      allow_auto_broadcast: values.allow_auto_broadcast !== false,
-      last_broadcast_at: editingProduct?.last_broadcast_at || null,
-      images: finalImages,
-      files: productFiles,
-    });
+    try {
+      await saveProduct({
+        id: editingProduct?.id,
+        category_id: values.category_id || null,
+        name: values.name,
+        slug: values.slug || slugify(values.name),
+        short_description: '',
+        description: values.description,
+        pedagogical_objectives: [],
+        subject: values.subject,
+        school_grade: '',
+        age_group: '',
+        pages: values.pages,
+        file_type: values.file_type,
+        price: values.price,
+        sale_price:
+          values.sale_price && values.sale_price > 0 ? values.sale_price : null,
+        featured: values.featured,
+        active: values.active,
+        allow_auto_broadcast: values.allow_auto_broadcast !== false,
+        last_broadcast_at: editingProduct?.last_broadcast_at || null,
+        images: finalImages,
+        files: productFiles,
+      });
 
-    toast.success(
-      editingProduct
-        ? 'Material atualizado com sucesso!'
-        : 'Novo material cadastrado com sucesso!'
-    );
-    setIsProductModalOpen(false);
+      toast.success(
+        editingProduct
+          ? 'Material atualizado com sucesso!'
+          : 'Novo material cadastrado com sucesso!'
+      );
+      setIsProductModalOpen(false);
+    } catch (err: any) {
+      console.error('Erro ao salvar produto:', err);
+      toast.error(
+        err?.message || 'Falha ao salvar material. Verifique a conexão e os campos.'
+      );
+    }
   };
 
   // ==========================================================================

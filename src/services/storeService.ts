@@ -383,53 +383,96 @@ export const storeService = {
     };
 
     if (isSupabaseConfigured) {
-      const { data: savedProd, error } = await supabase
+      const isValidUuid = (val?: string | null) =>
+        Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+      const safeCategoryId = isValidUuid(record.category_id) ? record.category_id : null;
+
+      const basePayload: Record<string, unknown> = {
+        category_id: safeCategoryId,
+        name: record.name,
+        slug: record.slug,
+        short_description: record.short_description || '',
+        description: record.description,
+        pedagogical_objectives: record.pedagogical_objectives.join('\n'),
+        subject: record.subject,
+        school_grade: record.school_grade || '',
+        age_group: record.age_group || '',
+        pages: record.pages,
+        file_type: record.file_type,
+        price: record.price,
+        sale_price: record.sale_price,
+        featured: record.featured,
+        active: record.active,
+      };
+
+      if (isEdit && isValidUuid(record.id)) {
+        basePayload.id = record.id;
+      }
+
+      let savedProd: { id: string } | null = null;
+      let error: { code?: string; message?: string } | null = null;
+
+      // 1. Tenta salvar incluindo allow_auto_broadcast
+      const firstAttempt = await supabase
         .from('products')
-        .upsert({
-          ...(isEdit ? { id: record.id } : {}),
-          category_id: record.category_id,
-          name: record.name,
-          slug: record.slug,
-          short_description: record.short_description,
-          description: record.description,
-          pedagogical_objectives: record.pedagogical_objectives.join('\n'),
-          subject: record.subject,
-          school_grade: record.school_grade,
-          age_group: record.age_group,
-          pages: record.pages,
-          file_type: record.file_type,
-          price: record.price,
-          sale_price: record.sale_price,
-          featured: record.featured,
-          active: record.active,
-          allow_auto_broadcast: record.allow_auto_broadcast,
-        })
+        .upsert({ ...basePayload, allow_auto_broadcast: record.allow_auto_broadcast })
         .select()
         .maybeSingle();
 
-      if (!error && savedProd) {
+      if (firstAttempt.error) {
+        // Se a coluna allow_auto_broadcast ainda não existe no Supabase, refaz sem ela
+        if (
+          firstAttempt.error.code === 'PGRST204' ||
+          firstAttempt.error.message?.includes('allow_auto_broadcast')
+        ) {
+          const secondAttempt = await supabase
+            .from('products')
+            .upsert(basePayload)
+            .select()
+            .maybeSingle();
+          savedProd = secondAttempt.data as { id: string } | null;
+          error = secondAttempt.error;
+        } else {
+          error = firstAttempt.error;
+        }
+      } else {
+        savedProd = firstAttempt.data as { id: string } | null;
+      }
+
+      if (error) {
+        console.error('Erro ao salvar produto no Supabase:', error);
+        throw new Error(error.message || 'Erro ao salvar material no banco de dados.');
+      }
+
+      if (savedProd) {
         const prodId = savedProd.id;
         record.id = prodId;
+
+        // Atualiza imagens vinculadas
         await supabase.from('product_images').delete().eq('product_id', prodId);
         if (record.images.length > 0) {
-          await supabase.from('product_images').insert(
+          const { error: imgErr } = await supabase.from('product_images').insert(
             record.images.map((img, i) => ({
               product_id: prodId,
               image_url: img.image_url,
               order_index: i,
             }))
           );
+          if (imgErr) console.warn('Aviso ao salvar imagens:', imgErr);
         }
 
+        // Atualiza arquivos vinculados
         await supabase.from('product_files').delete().eq('product_id', prodId);
         if (record.files.length > 0) {
-          await supabase.from('product_files').insert(
+          const { error: filesErr } = await supabase.from('product_files').insert(
             record.files.map((f) => ({
               product_id: prodId,
               file_url: f.file_url,
               file_name: f.file_name,
             }))
           );
+          if (filesErr) console.warn('Aviso ao salvar arquivos:', filesErr);
         }
       }
     }
@@ -513,17 +556,42 @@ export const storeService = {
   ): Promise<{ fileUrl: string; fileName: string; sizeBytes: number }> {
     if (isSupabaseConfigured) {
       const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const { error } = await supabase.storage.from('files').upload(safeName, file, {
-        upsert: true,
-      });
+      try {
+        const { error } = await supabase.storage.from('files').upload(safeName, file, {
+          upsert: true,
+        });
 
-      if (!error) {
-        const { data } = supabase.storage.from('files').getPublicUrl(safeName);
+        if (!error) {
+          const { data } = supabase.storage.from('files').getPublicUrl(safeName);
+          return {
+            fileUrl: data?.publicUrl || safeName,
+            fileName: file.name,
+            sizeBytes: file.size,
+          };
+        } else {
+          console.warn('Supabase storage upload error:', error.message);
+        }
+      } catch (err) {
+        console.warn('Exceção no upload para Supabase Storage:', err);
+      }
+    }
+
+    // Se o upload para o bucket falhar (por exemplo, política de RLS), gera Data URL para arquivos < 4MB
+    if (file.size < 4 * 1024 * 1024) {
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
         return {
-          fileUrl: data?.publicUrl || safeName,
+          fileUrl: dataUrl,
           fileName: file.name,
           sizeBytes: file.size,
         };
+      } catch {
+        // fallback
       }
     }
 

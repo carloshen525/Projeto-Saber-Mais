@@ -421,8 +421,27 @@ export const storeService = {
         .maybeSingle();
 
       if (firstAttempt.error) {
-        // Se a coluna allow_auto_broadcast ainda não existe no Supabase, refaz sem ela
+        // Se for erro de slug duplicado (código 23505), gera sufixo único e tenta novamente
         if (
+          firstAttempt.error.code === '23505' ||
+          firstAttempt.error.message?.includes('products_slug_key') ||
+          firstAttempt.error.message?.includes('slug')
+        ) {
+          const uniqueSlug = `${basePayload.slug}-${Date.now().toString().slice(-4)}`;
+          basePayload.slug = uniqueSlug;
+          record.slug = uniqueSlug;
+          const retrySlugAttempt = await supabase
+            .from('products')
+            .upsert({ ...basePayload, allow_auto_broadcast: record.allow_auto_broadcast })
+            .select()
+            .maybeSingle();
+
+          if (!retrySlugAttempt.error) {
+            savedProd = retrySlugAttempt.data as { id: string } | null;
+          } else {
+            error = retrySlugAttempt.error;
+          }
+        } else if (
           firstAttempt.error.code === 'PGRST204' ||
           firstAttempt.error.message?.includes('allow_auto_broadcast')
         ) {

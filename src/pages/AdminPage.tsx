@@ -74,13 +74,13 @@ type AdminTab =
 // ZOD SCHEMAS FOR FORMS
 // ============================================================================
 const productFormSchema = z.object({
-  name: z.string().min(2, 'Informe o nome do material'),
-  slug: z.string().min(2, 'Informe o slug'),
-  description: z.string().min(5, 'Informe a descrição do material'),
+  name: z.string().min(1, 'Informe o nome do material'),
+  slug: z.string().optional(),
+  description: z.string().optional(),
   category_id: z.string().nullable().optional(),
-  subject: z.string().min(2, 'Informe a disciplina'),
+  subject: z.string().optional(),
   pages: z.coerce.number().min(1, 'Mínimo de 1 página'),
-  file_type: z.string().min(1, 'Informe o tipo de arquivo'),
+  file_type: z.string(),
   price: z.coerce.number().min(0, 'Informe o preço'),
   sale_price: z.coerce.number().nullable().optional(),
   featured: z.boolean(),
@@ -127,6 +127,7 @@ export const AdminPage: React.FC = () => {
   const [productFiles, setProductFiles] = useState<ProductFile[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
 
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -326,6 +327,7 @@ export const AdminPage: React.FC = () => {
   };
 
   const onSubmitProduct = async (values: ProductFormValues) => {
+    setIsSavingProduct(true);
     const finalImages =
       productImages.length > 0
         ? productImages
@@ -336,7 +338,7 @@ export const AdminPage: React.FC = () => {
               image_url: createBookCoverSvg(
                 values.name.slice(0, 22),
                 'Material Digital',
-                `${values.pages} PÁGS ${values.file_type}`,
+                `${values.pages || 40} PÁGS ${values.file_type || 'PDF'}`,
                 settings.primary_color || '#207182',
                 '#0e5261',
                 settings.secondary_color || '#eab308'
@@ -349,21 +351,21 @@ export const AdminPage: React.FC = () => {
       await saveProduct({
         id: editingProduct?.id,
         category_id: values.category_id || null,
-        name: values.name,
-        slug: values.slug || slugify(values.name),
+        name: values.name.trim(),
+        slug: (values.slug || slugify(values.name)).trim(),
         short_description: '',
-        description: values.description,
+        description: values.description || '',
         pedagogical_objectives: [],
-        subject: values.subject,
+        subject: values.subject || 'Geral',
         school_grade: '',
         age_group: '',
-        pages: values.pages,
-        file_type: values.file_type,
-        price: values.price,
+        pages: Number(values.pages) || 1,
+        file_type: values.file_type || 'PDF',
+        price: Number(values.price) || 0,
         sale_price:
-          values.sale_price && values.sale_price > 0 ? values.sale_price : null,
-        featured: values.featured,
-        active: values.active,
+          values.sale_price && Number(values.sale_price) > 0 ? Number(values.sale_price) : null,
+        featured: Boolean(values.featured),
+        active: values.active !== false,
         allow_auto_broadcast: values.allow_auto_broadcast !== false,
         last_broadcast_at: editingProduct?.last_broadcast_at || null,
         images: finalImages,
@@ -381,7 +383,15 @@ export const AdminPage: React.FC = () => {
       toast.error(
         err?.message || 'Falha ao salvar material. Verifique a conexão e os campos.'
       );
+    } finally {
+      setIsSavingProduct(false);
     }
+  };
+
+  const onInvalidProduct = (errors: any) => {
+    console.warn('Validação do formulário de material:', errors);
+    const firstErr = Object.values(errors)[0] as any;
+    toast.error(firstErr?.message || 'Preencha o nome do material para continuar.');
   };
 
   // ==========================================================================
@@ -1588,7 +1598,7 @@ export const AdminPage: React.FC = () => {
             </div>
 
             <form
-              onSubmit={productForm.handleSubmit(onSubmitProduct)}
+              onSubmit={productForm.handleSubmit(onSubmitProduct, onInvalidProduct)}
               className="mt-5 space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1606,10 +1616,15 @@ export const AdminPage: React.FC = () => {
                     })}
                     placeholder="Ex: Apostila Alfabetização Completa"
                   />
+                  {productForm.formState.errors.name && (
+                    <p className="mt-1 text-xs font-semibold text-red-500">
+                      {productForm.formState.errors.name.message}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Slug (URL amigável) *
+                    Slug (URL amigável)
                   </label>
                   <Input
                     {...productForm.register('slug')}
@@ -1627,6 +1642,7 @@ export const AdminPage: React.FC = () => {
                     {...productForm.register('category_id')}
                     className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
                   >
+                    <option value="">Sem Categoria (Geral)</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -1637,11 +1653,11 @@ export const AdminPage: React.FC = () => {
 
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Disciplina *
+                    Disciplina
                   </label>
                   <Input
                     {...productForm.register('subject')}
-                    placeholder="Ex: Matemática"
+                    placeholder="Ex: Alfabetização, Matemática, Geral"
                   />
                 </div>
               </div>
@@ -1847,8 +1863,12 @@ export const AdminPage: React.FC = () => {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" style={{ backgroundColor: primaryColor }}>
-                  Salvar Material
+                <Button
+                  type="submit"
+                  disabled={isSavingProduct || uploadingImage || uploadingFile}
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {isSavingProduct ? 'Salvando Material...' : 'Salvar Material'}
                 </Button>
               </div>
             </form>

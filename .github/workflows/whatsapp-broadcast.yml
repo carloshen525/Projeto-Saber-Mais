@@ -1,0 +1,22 @@
+name: WhatsApp Auto Broadcast Cron
+
+on:
+  schedule:
+    # Executa a cada 15 minutos (24 horas por dia, 7 dias por semana)
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Permite disparar manualmente pelo painel do GitHub Actions
+
+jobs:
+  broadcast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acionar automação de divulgação do WhatsApp
+        run: |
+          URL="${{ secrets.STORE_CRON_URL }}"
+          if [ -z "$URL" ]; then
+            URL="https://projeto-saber-mais.vercel.app/api/broadcast-cron"
+          fi
+          echo "Disparando cron para: $URL"
+          RESPONSE=$(curl -sS -X GET "$URL" -H "User-Agent: GitHub-Actions-Cron")
+          echo "Resposta do servidor:"
+          echo "$RESPONSE"

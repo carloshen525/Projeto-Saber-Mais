@@ -141,14 +141,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               type="button"
               onClick={handleAdd}
               style={{ backgroundColor: settings.primary_color || '#207182' }}
-              className="inline-flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-full px-2.5 sm:px-5 text-xs sm:text-sm font-bold text-white shadow-xs transition-all hover:opacity-95 active:scale-95 cursor-pointer w-full xs:w-auto"
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full px-3 sm:px-5 text-xs sm:text-sm font-extrabold text-white shadow-xs transition-all hover:opacity-95 active:scale-95 cursor-pointer w-full xs:w-auto"
             >
               <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span>Adicionar</span>
             </button>
           ) : (
             <div
-              className="inline-flex h-8 sm:h-10 items-center justify-between rounded-xl sm:rounded-full border border-slate-200 sm:border-2 p-0.5 sm:p-1 shadow-xs"
+              className="inline-flex h-9 sm:h-10 items-center justify-between rounded-xl sm:rounded-full border border-slate-200 sm:border-2 p-0.5 sm:p-1 shadow-xs"
               style={{ borderColor: settings.primary_color || '#207182' }}
             >
               <button
@@ -158,9 +158,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   updateQuantity(product.id, quantityInCart - 1);
                 }}
                 aria-label="Diminuir quantidade"
-                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg sm:rounded-full text-slate-700 transition-colors hover:bg-slate-100 cursor-pointer dark:text-slate-200 dark:hover:bg-slate-800"
+                className="flex h-7 w-7 items-center justify-center rounded-lg sm:rounded-full text-slate-700 transition-colors hover:bg-slate-100 cursor-pointer dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
               <span className="min-w-6 sm:min-w-8 text-center text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
                 {quantityInCart}
@@ -173,9 +173,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 }}
                 aria-label="Aumentar quantidade"
                 style={{ backgroundColor: settings.primary_color || '#207182' }}
-                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg sm:rounded-full text-white transition-transform hover:scale-105 cursor-pointer"
+                className="flex h-7 w-7 items-center justify-center rounded-lg sm:rounded-full text-white transition-transform hover:scale-105 cursor-pointer"
               >
-                <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
           )}

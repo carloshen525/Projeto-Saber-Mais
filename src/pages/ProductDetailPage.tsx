@@ -361,34 +361,34 @@ export const ProductDetailPage: React.FC = () => {
                       navigate('/');
                     }}
                     style={{ backgroundColor: primaryColor }}
-                    className="flex-1 rounded-2xl text-base font-bold cursor-pointer"
+                    className="flex-1 h-14 sm:h-12 rounded-full sm:rounded-2xl text-lg sm:text-base font-extrabold cursor-pointer shadow-md active:scale-[0.98] transition-all gap-2.5"
                   >
-                    <ShoppingCart className="h-5 w-5" />
-                    Adicionar ao Carrinho
+                    <ShoppingCart className="h-6 w-6 sm:h-5 sm:w-5" />
+                    <span>Adicionar ao Carrinho</span>
                   </Button>
                 ) : (
                   <div className="flex flex-col sm:flex-row flex-1 gap-3">
                     <div
-                      className="inline-flex h-12 items-center rounded-2xl border-2 px-2 self-start sm:self-auto"
+                      className="inline-flex h-14 sm:h-12 items-center justify-between sm:justify-start rounded-full sm:rounded-2xl border-2 px-3 self-stretch sm:self-auto"
                       style={{ borderColor: primaryColor }}
                     >
                       <button
                         type="button"
                         onClick={() => updateQuantity(product.id, quantityInCart - 1)}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100 cursor-pointer dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 cursor-pointer dark:text-slate-200 dark:hover:bg-slate-800"
                       >
-                        <Minus className="h-4 w-4" />
+                        <Minus className="h-5 w-5 sm:h-4 sm:w-4" />
                       </button>
-                      <span className="min-w-10 text-center text-sm font-extrabold text-slate-900 dark:text-white px-2">
+                      <span className="min-w-10 text-center text-base sm:text-sm font-extrabold text-slate-900 dark:text-white px-2">
                         {quantityInCart} no carrinho
                       </span>
                       <button
                         type="button"
                         onClick={() => updateQuantity(product.id, quantityInCart + 1)}
                         style={{ backgroundColor: primaryColor }}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-white cursor-pointer"
+                        className="flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white cursor-pointer"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
                       </button>
                     </div>
 
@@ -396,7 +396,7 @@ export const ProductDetailPage: React.FC = () => {
                       size="lg"
                       variant="outline"
                       onClick={() => navigate('/')}
-                      className="flex-1 rounded-2xl text-base font-bold cursor-pointer"
+                      className="flex-1 h-14 sm:h-12 rounded-full sm:rounded-2xl text-base font-bold cursor-pointer"
                     >
                       Voltar à Loja
                     </Button>
@@ -405,9 +405,9 @@ export const ProductDetailPage: React.FC = () => {
                       size="lg"
                       variant="whatsapp"
                       onClick={() => setIsCartOpen(true)}
-                      className="flex-1 rounded-2xl text-base font-bold cursor-pointer"
+                      className="flex-1 h-14 sm:h-12 rounded-full sm:rounded-2xl text-base font-bold cursor-pointer gap-2"
                     >
-                      <MessageCircle className="h-5 w-5" />
+                      <MessageCircle className="h-6 w-6 sm:h-5 sm:w-5" />
                       Finalizar Pedido
                     </Button>
                   </div>

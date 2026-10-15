@@ -20,3 +20,4 @@ jobs:
           RESPONSE=$(curl -sS -X GET "$URL" -H "User-Agent: GitHub-Actions-Cron")
           echo "Resposta do servidor:"
           echo "$RESPONSE"
+

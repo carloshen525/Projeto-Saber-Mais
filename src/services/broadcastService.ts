@@ -81,22 +81,38 @@ export const broadcastService = {
 
     if (isSupabaseConfigured) {
       try {
+        const isValidUuid = (val?: string | null) =>
+          Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+        // Busca se já existe uma linha salva no banco para atualizar pelo id real
+        const { data: existingRows } = await supabase
+          .from('whatsapp_broadcast_config')
+          .select('id')
+          .limit(1);
+
+        const realId = existingRows?.[0]?.id || (isValidUuid(current.id) ? current.id : undefined);
+
+        const upsertPayload: Record<string, unknown> = {
+          ativo: updated.ativo,
+          evolution_api_url: updated.evolution_api_url?.trim(),
+          evolution_api_key: updated.evolution_api_key?.trim(),
+          instance_id: updated.instance_id?.trim(),
+          grupo_id: updated.grupo_id?.trim(),
+          grupo_nome: updated.grupo_nome?.trim(),
+          horario_inicio: updated.horario_inicio,
+          horario_fim: updated.horario_fim,
+          intervalo_minutos: Number(updated.intervalo_minutos) || 60,
+          min_dias_repeticao: Number(updated.min_dias_repeticao) || 3,
+          ultimo_envio_em: updated.ultimo_envio_em || null,
+        };
+
+        if (realId) {
+          upsertPayload.id = realId;
+        }
+
         const { data, error } = await supabase
           .from('whatsapp_broadcast_config')
-          .upsert({
-            id: current.id || undefined,
-            ativo: updated.ativo,
-            evolution_api_url: updated.evolution_api_url?.trim(),
-            evolution_api_key: updated.evolution_api_key?.trim(),
-            instance_id: updated.instance_id?.trim(),
-            grupo_id: updated.grupo_id?.trim(),
-            grupo_nome: updated.grupo_nome?.trim(),
-            horario_inicio: updated.horario_inicio,
-            horario_fim: updated.horario_fim,
-            intervalo_minutos: Number(updated.intervalo_minutos) || 60,
-            min_dias_repeticao: Number(updated.min_dias_repeticao) || 3,
-            ultimo_envio_em: updated.ultimo_envio_em || null,
-          })
+          .upsert(upsertPayload)
           .select()
           .maybeSingle();
 
@@ -147,10 +163,13 @@ export const broadcastService = {
 
     if (isSupabaseConfigured) {
       try {
+        const isValidUuid = (val?: string | null) =>
+          Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
         const { data, error } = await supabase
           .from('whatsapp_broadcast_history')
           .insert({
-            produto_id: record.produto_id || null,
+            produto_id: isValidUuid(record.produto_id) ? record.produto_id : null,
             produto_nome: record.produto_nome,
             produto_preco: record.produto_preco,
             produto_slug: record.produto_slug,

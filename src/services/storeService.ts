@@ -9,6 +9,7 @@ import {
   INITIAL_SETTINGS,
 } from '@/data/seedData';
 import type {
+  Banner,
   Category,
   Coupon,
   Order,
@@ -21,11 +22,14 @@ import type {
 const STORAGE_KEYS = {
   SETTINGS: 'sabermais_settings_v1',
   CATEGORIES: 'sabermais_categories_v1',
+  BANNERS: 'sabermais_banners_v1',
   PRODUCTS: 'sabermais_products_v1',
   ORDERS: 'sabermais_orders_v1',
   COUPONS: 'sabermais_coupons_v1',
   REVIEWS: 'sabermais_reviews_v1',
 };
+
+const INITIAL_BANNERS: Banner[] = [];
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -203,6 +207,194 @@ export const storeService = {
       STORAGE_KEYS.CATEGORIES,
       categories.filter((c) => c.id !== id)
     );
+  },
+
+  // =========================================================================
+  // BANNERS (CARROSSEL DA HOME)
+  // =========================================================================
+  getCachedBanners(): Banner[] {
+    return readLocal<Banner[]>(STORAGE_KEYS.BANNERS, INITIAL_BANNERS);
+  },
+
+  async getBanners(): Promise<Banner[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('banners')
+          .select('*')
+          .order('ordem', { ascending: true });
+
+        if (!error && data) {
+          writeLocal(STORAGE_KEYS.BANNERS, data);
+          return data as Banner[];
+        }
+      } catch (err) {
+        console.warn('Aviso ao carregar banners do Supabase:', err);
+      }
+    }
+    return readLocal<Banner[]>(STORAGE_KEYS.BANNERS, INITIAL_BANNERS);
+  },
+
+  async getActiveBanners(): Promise<Banner[]> {
+    const banners = await this.getBanners();
+    const now = new Date();
+
+    return banners
+      .filter((b) => {
+        if (!b.ativo) return false;
+        if (b.data_inicio && new Date(b.data_inicio) > now) return false;
+        if (b.data_fim && new Date(b.data_fim) < now) return false;
+        return true;
+      })
+      .sort((a, b) => a.ordem - b.ordem);
+  },
+
+  async saveBanner(
+    bannerInput: Omit<Banner, 'id' | 'created_at' | 'updated_at'> & { id?: string }
+  ): Promise<Banner> {
+    const banners = await this.getBanners();
+    const isEdit = Boolean(bannerInput.id);
+    const id = bannerInput.id || `banner-${Date.now()}`;
+    const now = new Date().toISOString();
+
+    const record: Banner = {
+      id,
+      titulo: bannerInput.titulo?.trim() || null,
+      subtitulo: bannerInput.subtitulo?.trim() || null,
+      texto_botao: bannerInput.texto_botao?.trim() || null,
+      imagem_desktop: bannerInput.imagem_desktop,
+      imagem_mobile: bannerInput.imagem_mobile?.trim() || null,
+      link: bannerInput.link?.trim() || '/',
+      abrir_nova_aba: Boolean(bannerInput.abrir_nova_aba),
+      ordem: bannerInput.ordem !== undefined ? Number(bannerInput.ordem) : banners.length,
+      ativo: bannerInput.ativo !== false,
+      data_inicio: bannerInput.data_inicio || null,
+      data_fim: bannerInput.data_fim || null,
+      created_at: isEdit ? banners.find((b) => b.id === id)?.created_at || now : now,
+      updated_at: now,
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const isValidUuid = (val?: string | null) =>
+          Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+        const payload: Record<string, unknown> = {
+          titulo: record.titulo,
+          subtitulo: record.subtitulo,
+          texto_botao: record.texto_botao,
+          imagem_desktop: record.imagem_desktop,
+          imagem_mobile: record.imagem_mobile,
+          link: record.link,
+          abrir_nova_aba: record.abrir_nova_aba,
+          ordem: record.ordem,
+          ativo: record.ativo,
+          data_inicio: record.data_inicio,
+          data_fim: record.data_fim,
+          updated_at: now,
+        };
+
+        if (isEdit && isValidUuid(record.id)) {
+          payload.id = record.id;
+        }
+
+        const { data, error } = await supabase
+          .from('banners')
+          .upsert(payload)
+          .select()
+          .maybeSingle();
+
+        if (!error && data) {
+          record.id = data.id;
+          record.created_at = data.created_at || record.created_at;
+          record.updated_at = data.updated_at || record.updated_at;
+        } else if (error) {
+          console.warn('Supabase banner upsert aviso:', error.message);
+        }
+      } catch (err) {
+        console.warn('Erro ao salvar banner no Supabase:', err);
+      }
+    }
+
+    const updatedList = isEdit
+      ? banners.map((b) => (b.id === record.id ? record : b))
+      : [...banners, record];
+
+    updatedList.sort((a, b) => a.ordem - b.ordem);
+    writeLocal(STORAGE_KEYS.BANNERS, updatedList);
+    return record;
+  },
+
+  async deleteBanner(id: string): Promise<void> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('banners').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Erro ao deletar banner no Supabase:', err);
+      }
+    }
+
+    const banners = await this.getBanners();
+    const remaining = banners.filter((b) => b.id !== id);
+    const reordered = remaining.map((b, idx) => ({ ...b, ordem: idx }));
+
+    if (isSupabaseConfigured) {
+      for (const b of reordered) {
+        try {
+          await supabase.from('banners').update({ ordem: b.ordem }).eq('id', b.id);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    writeLocal(STORAGE_KEYS.BANNERS, reordered);
+  },
+
+  async reorderBanners(orderedIds: string[]): Promise<Banner[]> {
+    const banners = await this.getBanners();
+    const bannerMap = new Map(banners.map((b) => [b.id, b]));
+
+    const reordered: Banner[] = [];
+    orderedIds.forEach((id, idx) => {
+      const banner = bannerMap.get(id);
+      if (banner) {
+        reordered.push({ ...banner, ordem: idx });
+      }
+    });
+
+    banners.forEach((b) => {
+      if (!orderedIds.includes(b.id)) {
+        reordered.push({ ...b, ordem: reordered.length });
+      }
+    });
+
+    if (isSupabaseConfigured) {
+      for (const b of reordered) {
+        try {
+          await supabase.from('banners').update({ ordem: b.ordem }).eq('id', b.id);
+        } catch (err) {
+          console.warn('Erro ao atualizar ordem de banner no Supabase:', err);
+        }
+      }
+    }
+
+    writeLocal(STORAGE_KEYS.BANNERS, reordered);
+    return reordered;
+  },
+
+  async toggleBannerStatus(id: string, ativo: boolean): Promise<void> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('banners').update({ ativo }).eq('id', id);
+      } catch (err) {
+        console.warn('Erro ao atualizar status do banner no Supabase:', err);
+      }
+    }
+
+    const banners = await this.getBanners();
+    const updated = banners.map((b) => (b.id === id ? { ...b, ativo } : b));
+    writeLocal(STORAGE_KEYS.BANNERS, updated);
   },
 
   // =========================================================================

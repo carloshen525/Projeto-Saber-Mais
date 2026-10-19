@@ -25,6 +25,23 @@ export interface Category {
   created_at: string;
 }
 
+export interface Banner {
+  id: string;
+  titulo?: string | null;
+  subtitulo?: string | null;
+  texto_botao?: string | null;
+  imagem_desktop: string;
+  imagem_mobile?: string | null;
+  link: string;
+  abrir_nova_aba: boolean;
+  ordem: number;
+  ativo: boolean;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface ProductImage {
   id: string;
   product_id: string;

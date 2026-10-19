@@ -28,6 +28,7 @@ import {
   Power,
   Terminal,
   Check,
+  Images,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,12 +61,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { WhatsAppBroadcastTab } from '@/components/admin/WhatsAppBroadcastTab';
+import { BannersTab } from '@/components/admin/BannersTab';
 
 type AdminTab =
   | 'dashboard'
   | 'materiais'
   | 'categorias'
   | 'pedidos'
+  | 'banners'
   | 'divulgacao'
   | 'aparencia'
   | 'configuracoes';
@@ -106,6 +109,7 @@ export const AdminPage: React.FC = () => {
   const {
     settings,
     categories,
+    banners,
     products,
     orders,
     updateSettings,
@@ -479,6 +483,12 @@ export const AdminPage: React.FC = () => {
       label: 'Pedidos',
       icon: <ShoppingBag className="h-4 w-4" />,
       badge: orders.length,
+    },
+    {
+      id: 'banners',
+      label: 'Banners',
+      icon: <Images className="h-4 w-4 text-cyan-600" />,
+      badge: banners.length,
     },
     {
       id: 'divulgacao',
@@ -1116,6 +1126,11 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* ================================================================
+              4.4 BANNERS TAB (CARROSSEL DA HOME)
+          ================================================================ */}
+          {activeTab === 'banners' && <BannersTab />}
 
           {/* ================================================================
               4.5 DIVULGAÇÃO WHATSAPP TAB (EVOLUTION API)

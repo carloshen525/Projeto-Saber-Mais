@@ -4,6 +4,7 @@ import { useStore } from '@/contexts/StoreContext';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/catalog/ProductCard';
+import { BannerCarousel } from '@/components/home/BannerCarousel';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const HomePage: React.FC = () => {
@@ -180,6 +181,9 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* CARROSSEL DE BANNERS DA HOME */}
+      <BannerCarousel />
 
       {/* CATEGORIES CHIPS BAR */}
       <div className="border-b border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900">

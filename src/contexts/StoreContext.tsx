@@ -1,11 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { storeService } from '@/services/storeService';
 import { INITIAL_SETTINGS } from '@/data/seedData';
-import type { Category, Order, OrderStatus, Product, StoreSettings } from '@/types/database';
+import type { Banner, Category, Order, OrderStatus, Product, StoreSettings } from '@/types/database';
 
 interface StoreContextType {
   settings: StoreSettings;
   categories: Category[];
+  banners: Banner[];
   products: Product[];
   orders: Order[];
   favorites: string[];
@@ -16,6 +17,10 @@ interface StoreContextType {
   updateSettings: (payload: Partial<StoreSettings>) => Promise<StoreSettings>;
   saveCategory: (cat: Omit<Category, 'id' | 'created_at'> & { id?: string }) => Promise<Category>;
   deleteCategory: (id: string) => Promise<void>;
+  saveBanner: (banner: Omit<Banner, 'id' | 'created_at' | 'updated_at'> & { id?: string }) => Promise<Banner>;
+  deleteBanner: (id: string) => Promise<void>;
+  reorderBanners: (orderedIds: string[]) => Promise<Banner[]>;
+  toggleBannerStatus: (id: string, ativo: boolean) => Promise<void>;
   saveProduct: (
     prod: Omit<Product, 'id' | 'created_at' | 'category'> & { id?: string }
   ) => Promise<Product>;
@@ -32,6 +37,7 @@ const FAVORITES_KEY = 'sabermais_favorites_v1';
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<StoreSettings>(() => storeService.getCachedSettings());
   const [categories, setCategories] = useState<Category[]>(() => storeService.getCachedCategories());
+  const [banners, setBanners] = useState<Banner[]>(() => storeService.getCachedBanners());
   const [products, setProducts] = useState<Product[]>(() => storeService.getCachedProducts());
   const [orders, setOrders] = useState<Order[]>(() => storeService.getCachedOrders());
   // Se já temos produtos no cache local, carregamos instantaneamente sem delay
@@ -50,16 +56,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const refreshAll = useCallback(async () => {
     try {
-      const [loadedSettings, loadedCategories, loadedProducts, loadedOrders] = await Promise.all([
+      const [loadedSettings, loadedCategories, loadedProducts, loadedOrders, loadedBanners] = await Promise.all([
         storeService.getSettings(),
         storeService.getCategories(),
         storeService.getProducts(),
         storeService.getOrders(),
+        storeService.getBanners(),
       ]);
       setSettings(loadedSettings);
       setCategories(loadedCategories);
       setProducts(loadedProducts);
       setOrders(loadedOrders);
+      setBanners(loadedBanners);
     } catch (err) {
       console.warn('Erro ao atualizar dados em segundo plano:', err);
     }
@@ -122,6 +130,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refreshAll();
   };
 
+  const saveBanner = async (
+    banner: Omit<Banner, 'id' | 'created_at' | 'updated_at'> & { id?: string }
+  ) => {
+    const saved = await storeService.saveBanner(banner);
+    await refreshAll();
+    return saved;
+  };
+
+  const deleteBanner = async (id: string) => {
+    await storeService.deleteBanner(id);
+    await refreshAll();
+  };
+
+  const reorderBanners = async (orderedIds: string[]) => {
+    const reordered = await storeService.reorderBanners(orderedIds);
+    await refreshAll();
+    return reordered;
+  };
+
+  const toggleBannerStatus = async (id: string, ativo: boolean) => {
+    await storeService.toggleBannerStatus(id, ativo);
+    await refreshAll();
+  };
+
   const saveProduct = async (
     prod: Omit<Product, 'id' | 'created_at' | 'category'> & { id?: string }
   ) => {
@@ -156,6 +188,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         settings,
         categories,
+        banners,
         products,
         orders,
         favorites,
@@ -166,6 +199,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSettings,
         saveCategory,
         deleteCategory,
+        saveBanner,
+        deleteBanner,
+        reorderBanners,
+        toggleBannerStatus,
         saveProduct,
         deleteProduct,
         toggleProductBroadcast,

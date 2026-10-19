@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -11,6 +11,17 @@ import { HomePage } from '@/pages/HomePage';
 import { ProductDetailPage } from '@/pages/ProductDetailPage';
 import { AdminLoginPage } from '@/pages/AdminLoginPage';
 import { AdminPage } from '@/pages/AdminPage';
+import { metaPixel } from '@/lib/metaPixel';
+
+function MetaPixelTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    metaPixel.trackPageView(location.pathname);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
 
 export function App() {
   return (
@@ -19,6 +30,7 @@ export function App() {
         <StoreProvider>
           <CartProvider>
             <BrowserRouter>
+              <MetaPixelTracker />
               <CartDrawer />
               <FloatingCartBar />
               <Routes>

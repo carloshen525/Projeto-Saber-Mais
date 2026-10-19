@@ -34,3 +34,4 @@ CREATE POLICY "Permitir leitura pública de banners" ON public.banners
 DROP POLICY IF EXISTS "Permitir gerenciamento de banners" ON public.banners;
 CREATE POLICY "Permitir gerenciamento de banners" ON public.banners
   FOR ALL USING (true) WITH CHECK (true);
+

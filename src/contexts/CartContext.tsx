@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getEffectivePrice } from '@/lib/utils';
+import { metaPixel } from '@/lib/metaPixel';
 import { storeService } from '@/services/storeService';
 import type { CartItem, Coupon, Product } from '@/types/database';
 
@@ -46,6 +47,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items]);
 
   const addItem = (product: Product, qty = 1) => {
+    try {
+      metaPixel.trackAddToCart(product, qty);
+    } catch (err) {
+      console.warn('Erro ao disparar pixel AddToCart:', err);
+    }
+
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {

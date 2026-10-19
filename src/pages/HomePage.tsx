@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/catalog/ProductCard';
 import { BannerCarousel } from '@/components/home/BannerCarousel';
 import { Skeleton } from '@/components/ui/skeleton';
+import { metaPixel } from '@/lib/metaPixel';
 
 export const HomePage: React.FC = () => {
   const { settings, categories, products, favorites, isLoading } = useStore();
@@ -18,6 +19,21 @@ export const HomePage: React.FC = () => {
   useEffect(() => {
     document.title = `${settings.store_name} | Materiais Pedagógicos Digitais`;
   }, [settings.store_name]);
+
+  // Track search in Meta Ads Pixel
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (term.length >= 3) {
+      const timer = setTimeout(() => {
+        try {
+          metaPixel.trackSearch(term);
+        } catch (err) {
+          console.warn('Erro ao disparar pixel Search:', err);
+        }
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery]);
 
   const activeCategories = useMemo(
     () => categories.filter((c) => c.active),

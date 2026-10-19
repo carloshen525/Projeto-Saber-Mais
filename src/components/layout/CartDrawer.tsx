@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Minus,
   Plus,
@@ -20,6 +20,7 @@ import {
   formatWhatsAppOrderMessage,
   buildWhatsAppUrl,
 } from '@/lib/utils';
+import { metaPixel } from '@/lib/metaPixel';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -41,6 +42,16 @@ export const CartDrawer: React.FC = () => {
   const [couponInput, setCouponInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (isCartOpen && items.length > 0) {
+      try {
+        metaPixel.trackInitiateCheckout(items, total);
+      } catch (err) {
+        console.warn('Erro ao disparar pixel InitiateCheckout:', err);
+      }
+    }
+  }, [isCartOpen]);
+
   if (!isCartOpen) return null;
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
@@ -60,6 +71,13 @@ export const CartDrawer: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Dispara eventos de conversão no Meta Ads Pixel (Purchase e Lead)
+      try {
+        metaPixel.trackPurchase(items, total, appliedCoupon?.code);
+      } catch (pixelErr) {
+        console.warn('Erro ao disparar pixel Purchase:', pixelErr);
+      }
+
       // Save order record for Admin -> Pedidos tracking
       await createOrder({
         customer_name: 'Cliente WhatsApp',

@@ -250,3 +250,4 @@ export const BannerCarousel: React.FC = () => {
     </section>
   );
 };
+

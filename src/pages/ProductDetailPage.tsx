@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { storeService } from '@/services/storeService';
 import { formatCurrency, getEffectivePrice } from '@/lib/utils';
+import { metaPixel } from '@/lib/metaPixel';
 import type { Product } from '@/types/database';
 
 export const ProductDetailPage: React.FC = () => {
@@ -70,7 +71,7 @@ export const ProductDetailPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [slug]);
 
-  // Dynamic SEO per material
+  // Dynamic SEO & Meta Pixel ViewContent per material
   useEffect(() => {
     if (product) {
       document.title = `${product.name} | ${settings.store_name}`;
@@ -80,6 +81,11 @@ export const ProductDetailPage: React.FC = () => {
           'content',
           product.description.slice(0, 155)
         );
+      }
+      try {
+        metaPixel.trackViewContent(product);
+      } catch (err) {
+        console.warn('Erro ao disparar pixel ViewContent:', err);
       }
     }
   }, [product, settings.store_name]);

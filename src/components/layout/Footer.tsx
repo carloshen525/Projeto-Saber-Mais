@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Lock, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { metaPixel } from '@/lib/metaPixel';
 
 export const Footer: React.FC = () => {
   const { settings } = useStore();
@@ -71,6 +72,13 @@ export const Footer: React.FC = () => {
                 href={`https://wa.me/5535998754516`}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => {
+                  try {
+                    metaPixel.trackContact('WhatsApp Rodapé');
+                  } catch (err) {
+                    console.warn(err);
+                  }
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />

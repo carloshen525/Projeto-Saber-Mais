@@ -77,13 +77,65 @@ export function formatWhatsAppOrderMessage(
   ].join('\n');
 }
 
-export function buildWhatsAppUrl(phone: string, message: string): string {
-  let cleanPhone = phone.replace(/\D/g, '');
-  // Normalize Brazilian numbers: if it starts with 55 and has 12 digits (missing 9 digit), fix it
-  if (cleanPhone.startsWith('5535') && cleanPhone.length === 12) {
-    cleanPhone = `55359${cleanPhone.slice(4)}`;
+/**
+ * Detecta se o dispositivo é móvel (smartphones e tablets)
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent || ''
+  );
+}
+
+/**
+ * Constrói URL direta do WhatsApp com suporte a deep link nativo no celular e desktop.
+ * Utiliza o endpoint oficial 'https://api.whatsapp.com/send' que aciona diretamente os
+ * Universal Links no iOS e App Intents no Android sem passar por redirecionamentos intermediários.
+ */
+export function buildWhatsAppUrl(phone: string, message: string = ''): string {
+  let cleanPhone = (phone || '').replace(/\D/g, '');
+  if (!cleanPhone) {
+    cleanPhone = '5535998754516';
   }
-  const finalPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-  return `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+  if (!cleanPhone.startsWith('55')) {
+    cleanPhone = `55${cleanPhone}`;
+  }
+  // Normalização para celular brasileiro: 55 + DDD (2 dígitos) + 8 dígitos = 12 dígitos -> adiciona o 9
+  if (cleanPhone.length === 12) {
+    const ddd = cleanPhone.slice(2, 4);
+    const rest = cleanPhone.slice(4);
+    cleanPhone = `55${ddd}9${rest}`;
+  }
+  const textParam = message ? `&text=${encodeURIComponent(message)}` : '';
+  return `https://api.whatsapp.com/send?phone=${cleanPhone}${textParam}`;
+}
+
+/**
+ * Redireciona para o WhatsApp de forma que nunca seja bloqueado por pop-up:
+ * - No Celular: sempre redireciona via window.location.href (aciona o app WhatsApp nativo via Universal Link / Intent, sem pop-up)
+ * - No Computador: se newTab=true, tenta abrir nova aba; caso bloqueado, navega diretamente.
+ */
+export function openWhatsAppUrl(url: string, newTabOnDesktop = true): void {
+  const isMobile = isMobileDevice();
+
+  if (isMobile) {
+    // No celular, NUNCA usar window.open ou target="_blank", pois navegadores bloqueiam como pop-up.
+    // Usar window.location.href abre diretamente o aplicativo do WhatsApp nativo!
+    window.location.href = url;
+  } else {
+    // No computador:
+    if (newTabOnDesktop) {
+      try {
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+          window.location.href = url;
+        }
+      } catch {
+        window.location.href = url;
+      }
+    } else {
+      window.location.href = url;
+    }
+  }
 }
 

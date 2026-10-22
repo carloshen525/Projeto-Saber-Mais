@@ -4,6 +4,7 @@ import { Lock, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { metaPixel } from '@/lib/metaPixel';
+import { buildWhatsAppUrl, openWhatsAppUrl } from '@/lib/utils';
 
 export const Footer: React.FC = () => {
   const { settings } = useStore();
@@ -69,17 +70,25 @@ export const Footer: React.FC = () => {
             </p>
             <div className="pt-1">
               <a
-                href={`https://wa.me/5535998754516`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => {
+                href={buildWhatsAppUrl(
+                  settings.whatsapp || '5535998754516',
+                  'Olá! Gostaria de tirar uma dúvida sobre os materiais.'
+                )}
+                onClick={(e) => {
+                  e.preventDefault();
                   try {
                     metaPixel.trackContact('WhatsApp Rodapé');
                   } catch (err) {
                     console.warn(err);
                   }
+                  openWhatsAppUrl(
+                    buildWhatsAppUrl(
+                      settings.whatsapp || '5535998754516',
+                      'Olá! Gostaria de tirar uma dúvida sobre os materiais.'
+                    )
+                  );
                 }}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
               >
                 <MessageCircle className="h-4 w-4" />
                 (35) 99875-4516

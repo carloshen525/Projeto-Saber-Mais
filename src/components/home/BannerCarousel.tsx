@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
+import { openWhatsAppUrl, isMobileDevice } from '@/lib/utils';
 import type { Banner } from '@/types/database';
 
 export const BannerCarousel: React.FC = () => {
@@ -90,15 +91,26 @@ export const BannerCarousel: React.FC = () => {
   const handleBannerClick = (banner: Banner) => {
     const rawLink = banner.link?.trim() || '/';
 
-    const isExternal =
-      /^https?:\/\//i.test(rawLink) ||
-      /^mailto:/i.test(rawLink) ||
-      /^tel:/i.test(rawLink) ||
+    const isWhatsApp =
       rawLink.includes('wa.me') ||
       rawLink.includes('whatsapp.com');
 
+    if (isWhatsApp) {
+      openWhatsAppUrl(rawLink, banner.abrir_nova_aba);
+      return;
+    }
+
+    const isExternal =
+      /^https?:\/\//i.test(rawLink) ||
+      /^mailto:/i.test(rawLink) ||
+      /^tel:/i.test(rawLink);
+
     if (banner.abrir_nova_aba) {
-      window.open(rawLink, '_blank', 'noopener,noreferrer');
+      if (isMobileDevice()) {
+        window.location.href = rawLink;
+      } else {
+        window.open(rawLink, '_blank', 'noopener,noreferrer');
+      }
     } else {
       if (isExternal) {
         window.location.href = rawLink;

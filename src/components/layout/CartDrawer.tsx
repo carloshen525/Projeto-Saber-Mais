@@ -19,6 +19,7 @@ import {
   getEffectivePrice,
   formatWhatsAppOrderMessage,
   buildWhatsAppUrl,
+  isMobileDevice,
 } from '@/lib/utils';
 import { metaPixel } from '@/lib/metaPixel';
 
@@ -70,6 +71,20 @@ export const CartDrawer: React.FC = () => {
     if (items.length === 0) return;
 
     setIsSubmitting(true);
+
+    const isMobile = isMobileDevice();
+
+    // No computador: pré-abre uma nova aba síncrona logo no clique do usuário,
+    // evitando que o navegador bloqueie o pop-up após a gravação assíncrona do pedido no banco de dados.
+    let desktopWindow: Window | null = null;
+    if (!isMobile) {
+      try {
+        desktopWindow = window.open('about:blank', '_blank');
+      } catch {
+        desktopWindow = null;
+      }
+    }
+
     try {
       // Dispara eventos de conversão no Meta Ads Pixel (Purchase e Lead)
       try {
@@ -78,27 +93,34 @@ export const CartDrawer: React.FC = () => {
         console.warn('Erro ao disparar pixel Purchase:', pixelErr);
       }
 
-      // Save order record for Admin -> Pedidos tracking
-      await createOrder({
-        customer_name: 'Cliente WhatsApp',
-        customer_email: '',
-        items: items.map((item) => {
-          const unitPrice = getEffectivePrice(item.product.price, item.product.sale_price);
-          return {
-            product_id: item.product.id,
-            name: item.product.name,
-            quantity: item.quantity,
-            unit_price: unitPrice,
-            subtotal: unitPrice * item.quantity,
-            file_type: item.product.file_type,
-          };
-        }),
-        subtotal,
-        discount,
-        total,
-        coupon_code: appliedCoupon?.code || null,
-        payment_method: 'whatsapp',
-      });
+      // Save order record for Admin -> Pedidos tracking (com timeout de segurança para não travar a experiência)
+      try {
+        await Promise.race([
+          createOrder({
+            customer_name: 'Cliente WhatsApp',
+            customer_email: '',
+            items: items.map((item) => {
+              const unitPrice = getEffectivePrice(item.product.price, item.product.sale_price);
+              return {
+                product_id: item.product.id,
+                name: item.product.name,
+                quantity: item.quantity,
+                unit_price: unitPrice,
+                subtotal: unitPrice * item.quantity,
+                file_type: item.product.file_type,
+              };
+            }),
+            subtotal,
+            discount,
+            total,
+            coupon_code: appliedCoupon?.code || null,
+            payment_method: 'whatsapp',
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
+        ]);
+      } catch (orderErr) {
+        console.warn('Registro de pedido concluído ou excedeu tempo limite:', orderErr);
+      }
 
       const message = formatWhatsAppOrderMessage(
         items,
@@ -110,11 +132,27 @@ export const CartDrawer: React.FC = () => {
       const whatsappUrl = buildWhatsAppUrl(settings.whatsapp || '5535998754516', message);
 
       toast.success('Pedido preparado! Redirecionando para o WhatsApp...');
-      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+
+      if (isMobile) {
+        // NO CELULAR: redireciona a janela atual.
+        // O sistema operacional (Android / iOS) intercepta a URL e abre imediatamente o APP WhatsApp nativo!
+        // Não aciona bloqueadores de pop-up.
+        window.location.href = whatsappUrl;
+      } else {
+        // NO COMPUTADOR: navega a aba pré-aberta para o WhatsApp Web
+        if (desktopWindow && !desktopWindow.closed) {
+          desktopWindow.location.href = whatsappUrl;
+        } else {
+          window.location.href = whatsappUrl;
+        }
+      }
 
       clearCart();
       setIsCartOpen(false);
     } catch {
+      if (desktopWindow && !desktopWindow.closed) {
+        desktopWindow.close();
+      }
       toast.error('Ocorreu um erro ao preparar seu pedido.');
     } finally {
       setIsSubmitting(false);

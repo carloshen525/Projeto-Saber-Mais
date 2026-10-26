@@ -137,16 +137,20 @@ export const TelegramBroadcastTab: React.FC<TelegramBroadcastTabProps> = ({
 
   // Ações do Bot
   const handleTestBotConnection = async () => {
-    if (!config.bot_token?.trim()) {
+    const token = config.bot_token?.trim();
+    if (!token) {
       toast.error('Informe o Token do Bot do Telegram antes de testar.');
       return;
     }
     setIsTestingBot(true);
     try {
-      const res = await telegramService.testConnection(config.bot_token);
+      const res = await telegramService.testConnection(token);
       if (res.connected) {
         toast.success(res.details, { duration: 5000 });
+        // Salva imediatamente o token validado junto com os dados do bot
         const updated = await telegramService.saveConfig({
+          ...config,
+          bot_token: token,
           bot_name: res.botName || '',
           bot_username: res.botUsername || '',
         });
@@ -166,7 +170,10 @@ export const TelegramBroadcastTab: React.FC<TelegramBroadcastTabProps> = ({
     if (e) e.preventDefault();
     setIsSaving(true);
     try {
-      const saved = await telegramService.saveConfig(config);
+      const saved = await telegramService.saveConfig({
+        ...config,
+        bot_token: config.bot_token?.trim() || '',
+      });
       setConfig(saved);
       toast.success('Configurações do Telegram salvas com sucesso!');
     } catch {
@@ -261,8 +268,9 @@ export const TelegramBroadcastTab: React.FC<TelegramBroadcastTabProps> = ({
     forcedProd?: Product,
     targetDestId?: string
   ) => {
-    if (!config.bot_token?.trim()) {
-      toast.error('Configure o Token do Bot do Telegram antes de enviar.');
+    const token = config.bot_token?.trim();
+    if (!token) {
+      toast.error('Informe o Token do Bot do Telegram nas configurações antes de enviar.');
       return;
     }
     const activeDests = destinations.filter((d) => d.ativo);
@@ -273,10 +281,20 @@ export const TelegramBroadcastTab: React.FC<TelegramBroadcastTabProps> = ({
 
     setIsTriggeringNow(true);
     try {
+      // Salva preventivamente a configuração com o token atual
+      await telegramService.saveConfig({
+        ...config,
+        bot_token: token,
+      });
+
       const destParam = targetDestId === 'all' || !targetDestId ? undefined : targetDestId;
       const res = await telegramService.executeBroadcast({
         forcedProduct: forcedProd || previewProduct || undefined,
         targetDestinationId: destParam,
+        overrideConfig: {
+          ...config,
+          bot_token: token,
+        },
       });
 
       if (res.success) {
@@ -1012,3 +1030,4 @@ export const TelegramBroadcastTab: React.FC<TelegramBroadcastTabProps> = ({
     </div>
   );
 };
+

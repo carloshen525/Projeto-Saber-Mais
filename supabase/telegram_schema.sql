@@ -69,3 +69,4 @@ CREATE POLICY "Permitir gerenciamento de telegram_destinations" ON public.telegr
 DROP POLICY IF EXISTS "Permitir gerenciamento de telegram_publications" ON public.telegram_publications;
 CREATE POLICY "Permitir gerenciamento de telegram_publications" ON public.telegram_publications
   FOR ALL USING (true) WITH CHECK (true);
+

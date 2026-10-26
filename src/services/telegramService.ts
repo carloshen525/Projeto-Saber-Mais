@@ -74,7 +74,14 @@ export const telegramService = {
 
   async saveConfig(payload: Partial<TelegramBroadcastConfig>): Promise<TelegramBroadcastConfig> {
     const current = await this.getConfig();
-    const updated: TelegramBroadcastConfig = { ...current, ...payload };
+    const updated: TelegramBroadcastConfig = {
+      ...current,
+      ...payload,
+      bot_token: payload.bot_token !== undefined ? payload.bot_token : current.bot_token,
+    };
+
+    // Sempre sincroniza imediatamente no localStorage
+    writeLocal(STORAGE_KEY_CONFIG, updated);
 
     if (isSupabaseConfigured) {
       try {
@@ -119,7 +126,6 @@ export const telegramService = {
       }
     }
 
-    writeLocal(STORAGE_KEY_CONFIG, updated);
     return updated;
   },
 
@@ -556,10 +562,15 @@ export const telegramService = {
     forcedProduct?: Product;
     targetDestinationId?: string;
     storeUrl?: string;
+    overrideConfig?: Partial<TelegramBroadcastConfig>;
   }): Promise<{ success: boolean; message: string; product?: Product; sentCount?: number }> {
-    const config = await this.getConfig();
+    const baseConfig = await this.getConfig();
+    const config: TelegramBroadcastConfig = {
+      ...baseConfig,
+      ...(options?.overrideConfig || {}),
+    };
 
-    if (!config.bot_token) {
+    if (!config.bot_token?.trim()) {
       return {
         success: false,
         message: 'Token do Bot Telegram não configurado. Adicione o Token nas configurações.',
@@ -606,43 +617,54 @@ export const telegramService = {
     let productToBroadcast: Product | null = options?.forcedProduct || null;
 
     if (!productToBroadcast) {
+      let products: Product[] = [];
       if (isSupabaseConfigured) {
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*, product_images(*)')
-          .eq('active', true);
+        try {
+          const { data: productsData } = await supabase
+            .from('products')
+            .select('*, product_images(*)')
+            .eq('active', true);
 
-        const products: Product[] = (productsData || []).map((row) => ({
-          id: String(row.id),
-          category_id: row.category_id,
-          name: String(row.name),
-          slug: String(row.slug),
-          short_description: String(row.short_description || ''),
-          description: String(row.description || ''),
-          pedagogical_objectives: [],
-          subject: String(row.subject || ''),
-          school_grade: '',
-          age_group: '',
-          pages: Number(row.pages) || 1,
-          file_type: String(row.file_type || 'PDF'),
-          price: Number(row.price) || 0,
-          sale_price: row.sale_price !== null ? Number(row.sale_price) : null,
-          featured: Boolean(row.featured),
-          active: Boolean(row.active),
-          allow_auto_broadcast: row.allow_auto_broadcast !== false,
-          last_broadcast_at: row.last_broadcast_at,
-          created_at: String(row.created_at),
-          images: (row.product_images || []).sort(
-            (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
-          ),
-          files: [],
-        }));
-
-        productToBroadcast = this.pickNextProductToBroadcast(
-          products,
-          config.min_dias_repeticao
-        );
+          if (productsData && productsData.length > 0) {
+            products = productsData.map((row) => ({
+              id: String(row.id),
+              category_id: row.category_id,
+              name: String(row.name),
+              slug: String(row.slug),
+              short_description: String(row.short_description || ''),
+              description: String(row.description || ''),
+              pedagogical_objectives: [],
+              subject: String(row.subject || ''),
+              school_grade: '',
+              age_group: '',
+              pages: Number(row.pages) || 1,
+              file_type: String(row.file_type || 'PDF'),
+              price: Number(row.price) || 0,
+              sale_price: row.sale_price !== null ? Number(row.sale_price) : null,
+              featured: Boolean(row.featured),
+              active: Boolean(row.active),
+              allow_auto_broadcast: row.allow_auto_broadcast !== false,
+              last_broadcast_at: row.last_broadcast_at,
+              created_at: String(row.created_at),
+              images: (row.product_images || []).sort(
+                (a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index
+              ),
+              files: [],
+            }));
+          }
+        } catch {
+          // ignore
+        }
       }
+
+      if (products.length === 0) {
+        products = readLocal<Product[]>('sabermais_products_v1', []);
+      }
+
+      productToBroadcast = this.pickNextProductToBroadcast(
+        products,
+        config.min_dias_repeticao
+      );
     }
 
     if (!productToBroadcast) {
@@ -719,3 +741,4 @@ export const telegramService = {
     }
   },
 };
+

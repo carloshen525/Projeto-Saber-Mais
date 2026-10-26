@@ -177,3 +177,45 @@ export interface License {
   created_at: string;
 }
 
+// ============================================================================
+// TELEGRAM BROADCAST TYPES (Módulo Independente)
+// ============================================================================
+export interface TelegramBroadcastConfig {
+  id: string;
+  ativo: boolean;
+  bot_token: string;
+  bot_name?: string;
+  bot_username?: string;
+  horario_inicio: string; // ex: '08:00'
+  horario_fim: string;    // ex: '21:00'
+  intervalo_minutos: number; // ex: 15, 30, 60, etc
+  min_dias_repeticao: number; // dias antes de poder repetir o mesmo produto
+  ultimo_envio_em?: string | null;
+  criado_em?: string;
+}
+
+export type TelegramDestinationType = 'canal' | 'grupo';
+
+export interface TelegramDestination {
+  id: string;
+  nome: string;
+  chat_id: string; // ex: -1001234567890 ou @meucanal
+  tipo: TelegramDestinationType;
+  ativo: boolean;
+  criado_em?: string;
+}
+
+export interface TelegramPublication {
+  id: string;
+  produto_id: string;
+  produto_nome: string;
+  produto_preco: number;
+  produto_slug: string;
+  destino_id: string;
+  destino_nome?: string;
+  chat_id: string;
+  enviado_em: string;
+  status: 'sucesso' | 'erro';
+  mensagem_erro?: string | null;
+}
+

@@ -29,6 +29,7 @@ import {
   Terminal,
   Check,
   Images,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,6 +62,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { WhatsAppBroadcastTab } from '@/components/admin/WhatsAppBroadcastTab';
+import { TelegramBroadcastTab } from '@/components/admin/TelegramBroadcastTab';
 import { BannersTab } from '@/components/admin/BannersTab';
 
 type AdminTab =
@@ -70,6 +72,7 @@ type AdminTab =
   | 'pedidos'
   | 'banners'
   | 'divulgacao'
+  | 'telegram'
   | 'aparencia'
   | 'configuracoes';
 
@@ -494,6 +497,11 @@ export const AdminPage: React.FC = () => {
       id: 'divulgacao',
       label: 'Divulgação WhatsApp',
       icon: <MessageCircle className="h-4 w-4 text-emerald-500" />,
+    },
+    {
+      id: 'telegram',
+      label: 'Divulgação Telegram',
+      icon: <Send className="h-4 w-4 text-sky-500" />,
     },
     { id: 'aparencia', label: 'Aparência', icon: <Palette className="h-4 w-4" /> },
     {
@@ -1137,6 +1145,13 @@ export const AdminPage: React.FC = () => {
           ================================================================ */}
           {activeTab === 'divulgacao' && (
             <WhatsAppBroadcastTab primaryColor={primaryColor} />
+          )}
+
+          {/* ================================================================
+              4.6 DIVULGAÇÃO TELEGRAM TAB (TELEGRAM BOT API)
+          ================================================================ */}
+          {activeTab === 'telegram' && (
+            <TelegramBroadcastTab primaryColor={primaryColor} />
           )}
 
           {/* ================================================================

@@ -39,42 +39,86 @@ export function getEffectivePrice(price: number, salePrice?: number | null): num
 }
 
 /**
- * Generates the exact WhatsApp message format specified:
- * Olá!
- * Gostaria de adquirir os seguintes materiais:
- * 📘 Alfabetização Completa
- * 1x R$29,90
- * 📗 Atividades Matemática 2º Ano
- * 2x R$19,90
- * Total:
- * R$69,70
- * Nome:
- * Email:
+ * Formata a mensagem do pedido para o WhatsApp com o formato comercial solicitado:
+ *
+ * Olá, gostaria de finalizar meu pedido.
+ *
+ * Nome: {{nome}}
+ *
+ * Produtos:
+ * {{produtos}}
+ *
+ * Valor total:
+ * {{valor}}
+ *
+ * Aguardo as informações para pagamento.
  */
 export function formatWhatsAppOrderMessage(
   items: CartItem[],
   total: number,
-  customerName: string,
-  customerEmail: string,
+  customerName?: string,
+  customerEmail?: string,
   couponCode?: string | null
 ): string {
   const itemLines = items
     .map((item, idx) => {
       const emoji = BOOK_EMOJIS[idx % BOOK_EMOJIS.length];
       const unitPrice = getEffectivePrice(item.product.price, item.product.sale_price);
-      return `${emoji} ${item.product.name}\n${item.quantity}x ${formatPriceSimple(unitPrice)}`;
+      return `${emoji} ${item.product.name} (${item.quantity}x ${formatPriceSimple(unitPrice)})`;
     })
     .join('\n');
 
-  const couponLine = couponCode ? `\nCupom aplicado: ${couponCode}` : '';
+  const couponLine = couponCode ? ` (Cupom: ${couponCode})` : '';
+
+  if (customerName && customerName.trim() && customerName !== 'Cliente WhatsApp') {
+    return [
+      'Olá, gostaria de finalizar meu pedido.',
+      '',
+      `Nome: ${customerName.trim()}`,
+      '',
+      'Produtos:',
+      itemLines,
+      '',
+      'Valor total:',
+      `${formatPriceSimple(total)}${couponLine}`,
+      '',
+      'Aguardo as informações para pagamento.',
+    ].join('\n');
+  }
 
   return [
-    'Olá!',
-    'Gostaria de adquirir os seguintes materiais:',
+    'Olá, gostaria de finalizar meu pedido.',
+    '',
+    'Produtos:',
     itemLines,
-    'Total:',
+    '',
+    'Valor total:',
     `${formatPriceSimple(total)}${couponLine}`,
+    '',
+    'Aguardo as informações para pagamento.',
   ].join('\n');
+}
+
+/**
+ * Aplica máscara de telefone brasileiro (DDD) 9XXXX-XXXX
+ */
+export function formatPhone(phone: string): string {
+  const digits = (phone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
+/**
+ * Valida se o número possui ao menos DDD + 8 ou 9 dígitos
+ */
+export function validatePhone(phone: string): boolean {
+  const digits = (phone || '').replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 13;
 }
 
 /**

@@ -126,13 +126,29 @@ export interface OrderItemSummary {
   file_type: string;
 }
 
-export type OrderStatus = 'pending' | 'paid' | 'delivered' | 'cancelled';
+export type OrderStatus =
+  | 'novo'
+  | 'em_contato'
+  | 'pago'
+  | 'entregue'
+  | 'cancelado'
+  | 'pending'
+  | 'paid'
+  | 'delivered'
+  | 'cancelled';
+
+export interface OrderStatusHistoryItem {
+  status: OrderStatus;
+  updated_at: string;
+  note?: string;
+}
+
 export type PaymentMethodType = 'whatsapp' | 'pix' | 'mercado_pago' | 'stripe';
 
 export interface Order {
   id: string;
   customer_name: string;
-  customer_email: string;
+  customer_email?: string;
   customer_phone?: string;
   items: OrderItemSummary[];
   subtotal: number;
@@ -142,6 +158,13 @@ export interface Order {
   status: OrderStatus;
   payment_method: PaymentMethodType;
   created_at: string;
+  origin?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  status_history?: OrderStatusHistoryItem[];
 }
 
 export interface Coupon {

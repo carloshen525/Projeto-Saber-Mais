@@ -22,6 +22,8 @@ import {
   isMobileDevice,
 } from '@/lib/utils';
 import { metaPixel } from '@/lib/metaPixel';
+import { tracking } from '@/lib/tracking';
+import { CheckoutLeadModal } from '@/components/cart/CheckoutLeadModal';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -42,6 +44,7 @@ export const CartDrawer: React.FC = () => {
 
   const [couponInput, setCouponInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
 
   useEffect(() => {
     if (isCartOpen && items.length > 0) {
@@ -66,8 +69,19 @@ export const CartDrawer: React.FC = () => {
     }
   };
 
-  const handleCheckoutWhatsApp = async (e: React.FormEvent) => {
+  const handleOpenLeadModal = (e: React.FormEvent) => {
     e.preventDefault();
+    if (items.length === 0) return;
+    setIsLeadModalOpen(true);
+  };
+
+  const handleCompleteCheckout = async ({
+    customerName,
+    customerPhone,
+  }: {
+    customerName: string;
+    customerPhone: string;
+  }) => {
     if (items.length === 0) return;
 
     setIsSubmitting(true);
@@ -86,6 +100,9 @@ export const CartDrawer: React.FC = () => {
     }
 
     try {
+      // Captura a fonte do tráfego e parâmetros de campanha UTM
+      const traffic = tracking.getTrafficSource();
+
       // Dispara eventos de conversão no Meta Ads Pixel (Purchase e Lead)
       try {
         metaPixel.trackPurchase(items, total, appliedCoupon?.code);
@@ -93,11 +110,12 @@ export const CartDrawer: React.FC = () => {
         console.warn('Erro ao disparar pixel Purchase:', pixelErr);
       }
 
-      // Save order record for Admin -> Pedidos tracking (com timeout de segurança para não travar a experiência)
+      // Salva o registro do pedido / Lead no banco de dados com status "novo"
       try {
         await Promise.race([
           createOrder({
-            customer_name: 'Cliente WhatsApp',
+            customer_name: customerName,
+            customer_phone: customerPhone,
             customer_email: '',
             items: items.map((item) => {
               const unitPrice = getEffectivePrice(item.product.price, item.product.sale_price);
@@ -115,6 +133,20 @@ export const CartDrawer: React.FC = () => {
             total,
             coupon_code: appliedCoupon?.code || null,
             payment_method: 'whatsapp',
+            status: 'novo',
+            origin: traffic.origin || 'Direto',
+            utm_source: traffic.utm_source,
+            utm_medium: traffic.utm_medium,
+            utm_campaign: traffic.utm_campaign,
+            utm_content: traffic.utm_content,
+            utm_term: traffic.utm_term,
+            status_history: [
+              {
+                status: 'novo',
+                updated_at: new Date().toISOString(),
+                note: `Lead capturado via WhatsApp (${traffic.origin || 'Direto'})`,
+              },
+            ],
           }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
         ]);
@@ -122,10 +154,11 @@ export const CartDrawer: React.FC = () => {
         console.warn('Registro de pedido concluído ou excedeu tempo limite:', orderErr);
       }
 
+      // Formata a mensagem com Nome do Cliente, Produtos e Valor Total conforme solicitado
       const message = formatWhatsAppOrderMessage(
         items,
         total,
-        '',
+        customerName,
         '',
         appliedCoupon?.code
       );
@@ -147,6 +180,7 @@ export const CartDrawer: React.FC = () => {
         }
       }
 
+      setIsLeadModalOpen(false);
       clearCart();
       setIsCartOpen(false);
     } catch {
@@ -328,7 +362,7 @@ export const CartDrawer: React.FC = () => {
 
               {/* Drawer Footer: Totals + WhatsApp Button */}
               <form
-                onSubmit={handleCheckoutWhatsApp}
+                onSubmit={handleOpenLeadModal}
                 className="border-t border-slate-100 bg-slate-50/60 px-4 sm:px-6 py-4 space-y-3 dark:border-slate-800 dark:bg-slate-900"
               >
 
@@ -356,7 +390,7 @@ export const CartDrawer: React.FC = () => {
                   variant="whatsapp"
                   size="lg"
                   disabled={isSubmitting}
-                  className="w-full font-bold shadow-lg"
+                  className="w-full font-bold shadow-lg cursor-pointer"
                 >
                   <MessageCircle className="h-5 w-5" />
                   Finalizar Pedido
@@ -369,6 +403,17 @@ export const CartDrawer: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de Captura de Dados do Cliente antes do WhatsApp */}
+      <CheckoutLeadModal
+        isOpen={isLeadModalOpen}
+        onClose={() => setIsLeadModalOpen(false)}
+        items={items}
+        total={total}
+        primaryColor={settings.primary_color || '#207182'}
+        isSubmitting={isSubmitting}
+        onSubmit={handleCompleteCheckout}
+      />
     </div>
   );
 };

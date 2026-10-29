@@ -64,6 +64,7 @@ import { Card } from '@/components/ui/card';
 import { WhatsAppBroadcastTab } from '@/components/admin/WhatsAppBroadcastTab';
 import { TelegramBroadcastTab } from '@/components/admin/TelegramBroadcastTab';
 import { BannersTab } from '@/components/admin/BannersTab';
+import { OrdersTab } from '@/components/admin/OrdersTab';
 
 type AdminTab =
   | 'dashboard'
@@ -452,7 +453,7 @@ export const AdminPage: React.FC = () => {
   // COMPUTED DASHBOARD METRICS
   // ==========================================================================
   const totalRevenue = orders
-    .filter((o) => o.status !== 'cancelled')
+    .filter((o) => o.status !== 'cancelled' && o.status !== 'cancelado')
     .reduce((acc, o) => acc + Number(o.total || 0), 0);
 
   const filteredMaterials = products.filter((p) => {
@@ -710,7 +711,7 @@ export const AdminPage: React.FC = () => {
                     {orders.length}
                   </p>
                   <p className="mt-1 text-xs text-amber-600 font-semibold">
-                    {orders.filter((o) => o.status === 'pending').length} aguardando envio
+                    {orders.filter((o) => o.status === 'pending' || o.status === 'novo').length} aguardando contato/envio
                   </p>
                 </Card>
 
@@ -1026,113 +1027,10 @@ export const AdminPage: React.FC = () => {
           )}
 
           {/* ================================================================
-              4. PEDIDOS TAB
+              4. PEDIDOS TAB (GERENCIAMENTO COMPLETO DE LEADS E VENDAS)
           ================================================================ */}
           {activeTab === 'pedidos' && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                  Pedidos via WhatsApp
-                </h1>
-                <p className="text-sm text-slate-500">
-                  Acompanhe os pedidos gerados pelos visitantes, gere chaves de licença e envie os materiais.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {orders.map((order) => (
-                  <Card key={order.id} className="p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900 dark:text-white">
-                            {order.customer_name}
-                          </span>
-                          <Badge
-                            variant={
-                              order.status === 'delivered' || order.status === 'paid'
-                                ? 'emerald'
-                                : 'amber'
-                            }
-                          >
-                            {order.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          E-mail: {order.customer_email} • Pedido #{order.id}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <select
-                          value={order.status}
-                          onChange={async (e) => {
-                            const nextStatus = e.target.value as OrderStatus;
-                            await updateOrderStatus(order.id, nextStatus);
-                            toast.success('Status do pedido atualizado!');
-                          }}
-                          className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        >
-                          <option value="pending">Pendente</option>
-                          <option value="paid">Pago</option>
-                          <option value="delivered">Entregue</option>
-                          <option value="cancelled">Cancelado</option>
-                        </select>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const licenses = createOrderLicenses(order);
-                            toast.success(
-                              `Licença gerada: ${licenses[0]?.license_key || 'SABER-OK'}`
-                            );
-                          }}
-                        >
-                          Gerar Licença
-                        </Button>
-
-                        {order.customer_phone && (
-                          <a
-                            href={buildWhatsAppUrl(
-                              order.customer_phone,
-                              `Olá ${order.customer_name}! Aqui estão os links dos seus materiais pedagógicos do ${settings.store_name}:`
-                            )}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <Button size="sm" variant="whatsapp">
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              Enviar no WhatsApp
-                            </Button>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-xs">
-                      <div className="space-y-1">
-                        {order.items.map((item, idx) => (
-                          <p key={idx} className="text-slate-600 dark:text-slate-300">
-                            • <strong>{item.quantity}x</strong> {item.name} (
-                            {formatCurrency(item.unit_price)})
-                          </p>
-                        ))}
-                      </div>
-                      <div className="text-right">
-                        <span className="text-slate-400 block">Total do Pedido</span>
-                        <span
-                          className="text-lg font-extrabold"
-                          style={{ color: primaryColor }}
-                        >
-                          {formatCurrency(order.total)}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <OrdersTab primaryColor={primaryColor} />
           )}
 
           {/* ================================================================

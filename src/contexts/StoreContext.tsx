@@ -26,8 +26,8 @@ interface StoreContextType {
   ) => Promise<Product>;
   deleteProduct: (id: string) => Promise<void>;
   toggleProductBroadcast: (productId: string, allow: boolean) => Promise<void>;
-  createOrder: (order: Omit<Order, 'id' | 'created_at' | 'status'>) => Promise<Order>;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  createOrder: (order: Omit<Order, 'id' | 'created_at'> & { status?: OrderStatus }) => Promise<Order>;
+  updateOrderStatus: (orderId: string, status: OrderStatus, note?: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -172,14 +172,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refreshAll();
   };
 
-  const createOrder = async (order: Omit<Order, 'id' | 'created_at' | 'status'>) => {
+  const createOrder = async (order: Omit<Order, 'id' | 'created_at'> & { status?: OrderStatus }) => {
     const created = await storeService.createOrder(order);
     await refreshAll();
     return created;
   };
 
-  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
-    await storeService.updateOrderStatus(orderId, status);
+  const updateOrderStatus = async (orderId: string, status: OrderStatus, note?: string) => {
+    await storeService.updateOrderStatus(orderId, status, note);
     await refreshAll();
   };
 

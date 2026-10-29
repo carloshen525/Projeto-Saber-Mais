@@ -19,7 +19,7 @@ export function createOrderLicenses(order: Order): License[] {
     order_id: order.id,
     product_id: item.product_id,
     license_key: generateLicenseKey(item.name),
-    customer_email: order.customer_email,
+    customer_email: order.customer_email || '',
     download_count: 0,
     max_downloads: 5,
     expires_at: expiresAt,

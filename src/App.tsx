@@ -12,12 +12,14 @@ import { ProductDetailPage } from '@/pages/ProductDetailPage';
 import { AdminLoginPage } from '@/pages/AdminLoginPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { metaPixel } from '@/lib/metaPixel';
+import { tracking } from '@/lib/tracking';
 
 function MetaPixelTracker() {
   const location = useLocation();
 
   useEffect(() => {
     metaPixel.trackPageView(location.pathname);
+    tracking.init();
   }, [location.pathname, location.search]);
 
   return null;

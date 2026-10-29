@@ -831,35 +831,86 @@ export const storeService = {
   },
 
   async createOrder(
-    orderInput: Omit<Order, 'id' | 'created_at' | 'status'>
+    orderInput: Omit<Order, 'id' | 'created_at'> & { status?: OrderStatus }
   ): Promise<Order> {
     const orders = await this.getOrders();
+    const initialStatus = orderInput.status || 'novo';
+    const nowIso = new Date().toISOString();
+
     const record: Order = {
       ...orderInput,
-      id: `ord-${Date.now().toString().slice(-5)}`,
-      status: 'pending',
-      created_at: new Date().toISOString(),
+      id: `ord-${Date.now().toString().slice(-6)}`,
+      status: initialStatus,
+      created_at: nowIso,
+      status_history: orderInput.status_history || [
+        {
+          status: initialStatus,
+          updated_at: nowIso,
+          note: 'Pedido iniciado pelo cliente via WhatsApp',
+        },
+      ],
     };
 
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert({
-          customer_name: record.customer_name,
-          customer_email: record.customer_email,
-          customer_phone: record.customer_phone || '',
-          items: record.items,
-          subtotal: record.subtotal,
-          discount: record.discount,
-          total: record.total,
-          coupon_code: record.coupon_code || null,
-          status: record.status,
-          payment_method: record.payment_method,
-        })
-        .select()
-        .maybeSingle();
-      if (!error && data) {
-        return data as Order;
+      try {
+        // Tenta salvar com todos os campos (incluindo lead/UTM/status_history)
+        const { data, error } = await supabase
+          .from('orders')
+          .insert({
+            customer_name: record.customer_name,
+            customer_email: record.customer_email || '',
+            customer_phone: record.customer_phone || '',
+            items: record.items,
+            subtotal: record.subtotal,
+            discount: record.discount,
+            total: record.total,
+            coupon_code: record.coupon_code || null,
+            status: record.status,
+            payment_method: record.payment_method,
+            origin: record.origin || 'Direto',
+            utm_source: record.utm_source || null,
+            utm_medium: record.utm_medium || null,
+            utm_campaign: record.utm_campaign || null,
+            utm_content: record.utm_content || null,
+            utm_term: record.utm_term || null,
+            status_history: record.status_history,
+          })
+          .select()
+          .maybeSingle();
+
+        if (!error && data) {
+          const merged = { ...record, ...data } as Order;
+          writeLocal(STORAGE_KEYS.ORDERS, [merged, ...orders]);
+          return merged;
+        }
+
+        // Fallback para colunas básicas caso o schema do Supabase ainda não tenha sido migrado
+        if (error) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('orders')
+            .insert({
+              customer_name: record.customer_name,
+              customer_email: record.customer_email || '',
+              customer_phone: record.customer_phone || '',
+              items: record.items,
+              subtotal: record.subtotal,
+              discount: record.discount,
+              total: record.total,
+              coupon_code: record.coupon_code || null,
+              status: record.status === 'novo' ? 'pending' : record.status,
+              payment_method: record.payment_method,
+            })
+            .select()
+            .maybeSingle();
+
+          if (!fallbackError && fallbackData) {
+            const merged = { ...record, id: fallbackData.id } as Order;
+            writeLocal(STORAGE_KEYS.ORDERS, [merged, ...orders]);
+            return merged;
+          }
+        }
+      } catch (err) {
+        console.warn('Erro ao salvar pedido no Supabase:', err);
       }
     }
 
@@ -867,14 +918,40 @@ export const storeService = {
     return record;
   },
 
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
-    if (isSupabaseConfigured) {
-      await supabase.from('orders').update({ status }).eq('id', orderId);
-    }
+  async updateOrderStatus(orderId: string, status: OrderStatus, note?: string): Promise<void> {
     const orders = await this.getOrders();
+    const existing = orders.find((o) => o.id === orderId);
+    const nowIso = new Date().toISOString();
+
+    const newHistoryItem = {
+      status,
+      updated_at: nowIso,
+      note: note || `Status alterado para ${status}`,
+    };
+
+    const updatedHistory = existing?.status_history
+      ? [...existing.status_history, newHistoryItem]
+      : [newHistoryItem];
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('orders')
+          .update({
+            status,
+            status_history: updatedHistory,
+          })
+          .eq('id', orderId);
+      } catch (err) {
+        console.warn('Erro ao atualizar status no Supabase:', err);
+      }
+    }
+
     writeLocal(
       STORAGE_KEYS.ORDERS,
-      orders.map((o) => (o.id === orderId ? { ...o, status } : o))
+      orders.map((o) =>
+        o.id === orderId ? { ...o, status, status_history: updatedHistory } : o
+      )
     );
   },
 
